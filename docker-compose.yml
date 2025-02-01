@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   postgres:
     image: postgres:15-alpine
@@ -7,10 +5,13 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: quizapp
+      POSTGRES_MULTIPLE_DATABASES: quizapp_users,quizapp_ai,quizapp_study
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./services/study-service/create-multiple-databases.sh:/docker-entrypoint-initdb.d/10-create-multiple-databases.sh
+      - ./services/study-service/init.sql:/docker-entrypoint-initdb.d/20-study-init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
