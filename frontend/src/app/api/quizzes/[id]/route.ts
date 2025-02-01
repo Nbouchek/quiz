@@ -13,7 +13,7 @@ export async function GET(
   try {
     console.log('Fetching quiz with ID:', params.id)
     const response = await axios.get(
-      `${process.env.NEXT_PUBLIC_API_URL}/quizzes/${params.id}`
+      `${process.env.NEXT_PUBLIC_API_URL}/content/quizzes/${params.id}`
     )
 
     // Log the raw response

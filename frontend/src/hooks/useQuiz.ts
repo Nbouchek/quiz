@@ -6,8 +6,7 @@ import type {
   CreateQuizInput,
   UpdateQuizInput,
 } from '@/types'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL
+import { QUIZ_API_URL } from '@/config/constants'
 
 interface UseQuizOptions {
   enabled?: boolean
@@ -26,7 +25,7 @@ export function useQuiz(quizId?: string, options: UseQuizOptions = {}) {
       if (!quizId) throw new Error('Quiz ID is required')
       console.log('Fetching quiz:', quizId)
       const response = await axios.get<ApiResponse<Quiz>>(
-        `${API_URL}/quizzes/${quizId}`
+        `${QUIZ_API_URL}/${quizId}`
       )
       console.log('Raw API Response:', JSON.stringify(response.data, null, 2))
 
@@ -70,7 +69,7 @@ export function useQuiz(quizId?: string, options: UseQuizOptions = {}) {
     mutationFn: async (input) => {
       console.log('Creating quiz with input:', JSON.stringify(input, null, 2))
       const response = await axios.post<ApiResponse<Quiz>>(
-        `${API_URL}/quizzes`,
+        QUIZ_API_URL,
         {
           ...input,
           questions: input.questions.map((q) => ({
@@ -99,7 +98,7 @@ export function useQuiz(quizId?: string, options: UseQuizOptions = {}) {
       if (!quizId) throw new Error('Quiz ID is required')
       console.log('Updating quiz with input:', JSON.stringify(input, null, 2))
       const response = await axios.patch<ApiResponse<Quiz>>(
-        `${API_URL}/quizzes/${quizId}`,
+        `${QUIZ_API_URL}/${quizId}`,
         {
           ...input,
           questions: input.questions?.map((q) => ({
@@ -126,7 +125,7 @@ export function useQuiz(quizId?: string, options: UseQuizOptions = {}) {
   const deleteQuiz = useMutation<void, AxiosError, void>({
     mutationFn: async () => {
       if (!quizId) throw new Error('Quiz ID is required')
-      await axios.delete(`${API_URL}/quizzes/${quizId}`)
+      await axios.delete(`${QUIZ_API_URL}/${quizId}`)
     },
     onSuccess: () => {
       queryClient.removeQueries({ queryKey: ['quiz', quizId] })

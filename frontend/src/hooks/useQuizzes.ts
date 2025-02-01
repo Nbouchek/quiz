@@ -1,8 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import axios, { AxiosError } from 'axios'
 import type { Quiz, ApiResponse } from '@/types'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL
+import { QUIZ_API_URL } from '@/config/constants'
 
 export function useQuizzes() {
   const {
@@ -12,9 +11,7 @@ export function useQuizzes() {
   } = useQuery<Quiz[], AxiosError>({
     queryKey: ['quizzes'],
     queryFn: async () => {
-      const response = await axios.get<ApiResponse<Quiz[]>>(
-        `${API_URL}/quizzes`
-      )
+      const response = await axios.get<ApiResponse<Quiz[]>>(QUIZ_API_URL)
       if (!response.data.data) {
         throw new Error('No quizzes found')
       }

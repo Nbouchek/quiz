@@ -66,8 +66,13 @@ export interface User {
 
 // API response types
 export interface ApiResponse<T> {
-  data: T
+  data?: T
   message?: string
+  error?: {
+    code: string
+    message: string
+    details?: unknown
+  }
 }
 
 // Common utility types

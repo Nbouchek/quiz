@@ -3,7 +3,10 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"net/http"
 
 	"QuizApp/services/study-service/src/pkg/models"
 
@@ -198,30 +201,24 @@ func (r *PostgresQuizAttemptRepository) GetAttemptAnswers(ctx context.Context, a
 
 // GetQuestions retrieves all questions for a quiz
 func (r *PostgresQuizAttemptRepository) GetQuestions(ctx context.Context, quizID uuid.UUID) ([]*models.Question, error) {
-	query := `
-		SELECT id, quiz_id, question, created_at, updated_at
-		FROM questions
-		WHERE quiz_id = $1
-		ORDER BY created_at ASC`
-
-	rows, err := r.db.QueryContext(ctx, query, quizID)
+	// Make a request to the content service to get the questions
+	contentServiceURL := "http://content-service:8085"
+	resp, err := http.Get(fmt.Sprintf("%s/quizzes/%s/questions", contentServiceURL, quizID))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to fetch questions from content service: %v", err)
 	}
-	defer rows.Close()
+	defer resp.Body.Close()
 
-	var questions []*models.Question
-	for rows.Next() {
-		var question models.Question
-		err := rows.Scan(
-			&question.ID, &question.QuizID, &question.Question,
-			&question.CreatedAt, &question.UpdatedAt,
-		)
-		if err != nil {
-			return nil, err
-		}
-		questions = append(questions, &question)
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("content service returned status %d", resp.StatusCode)
 	}
 
-	return questions, nil
+	var response struct {
+		Data []*models.Question `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %v", err)
+	}
+
+	return response.Data, nil
 } 

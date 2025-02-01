@@ -101,7 +101,7 @@ export default function Home() {
         <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <div className="group relative rounded-lg border bg-white p-6 hover:shadow-md">
             <h3 className="text-lg font-semibold leading-7 text-gray-900">
-              <Link href="/quizzes/1" className="focus:outline-none">
+              <Link href="/content/quizzes/1" className="focus:outline-none">
                 <span className="absolute inset-0" aria-hidden="true" />
                 JavaScript Fundamentals
               </Link>

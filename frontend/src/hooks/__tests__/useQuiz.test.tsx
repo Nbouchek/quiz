@@ -1,9 +1,9 @@
 import { renderHook, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
-import { useQuiz, type CreateQuizInput, type UpdateQuizInput } from '../useQuiz'
+import { useQuiz } from '../useQuiz'
 import { createWrapper, mockQuiz } from '../../test/utils'
-import type { ApiResponse, Quiz } from '../../types'
+import type { ApiResponse, Quiz, CreateQuizInput, UpdateQuizInput } from '../../types'
 
 // Mock API URL
 const API_URL = 'http://localhost:8082'
@@ -18,21 +18,21 @@ const mockErrors = {
 
 const server = setupServer(
   // Default handlers
-  http.get(`${API_URL}/quizzes/:quizId`, () => {
+  http.get(`${API_URL}/content/quizzes/:quizId`, () => {
     return HttpResponse.json<ApiResponse<Quiz>>({ data: mockQuiz })
   }),
 
-  http.post(`${API_URL}/quizzes`, () => {
+  http.post(`${API_URL}/content/quizzes`, () => {
     return HttpResponse.json<ApiResponse<Quiz>>({ data: mockQuiz })
   }),
 
-  http.patch(`${API_URL}/quizzes/:quizId`, async ({ request }) => {
+  http.patch(`${API_URL}/content/quizzes/:quizId`, async ({ request }) => {
     const body = (await request.json()) as UpdateQuizInput
     const updatedQuiz = { ...mockQuiz, ...body } as Quiz
     return HttpResponse.json<ApiResponse<Quiz>>({ data: updatedQuiz })
   }),
 
-  http.delete(`${API_URL}/quizzes/:quizId`, () => {
+  http.delete(`${API_URL}/content/quizzes/:quizId`, () => {
     return new HttpResponse(null, { status: 204 })
   })
 )
@@ -64,7 +64,7 @@ describe('useQuiz', () => {
 
     it('handles quiz not found', async () => {
       server.use(
-        http.get(`${API_URL}/quizzes/:quizId`, () => {
+        http.get(`${API_URL}/content/quizzes/:quizId`, () => {
           return HttpResponse.json<ApiResponse<Quiz | null>>(
             { error: mockErrors.notFound },
             { status: 404 }
@@ -86,7 +86,7 @@ describe('useQuiz', () => {
 
     it('handles server error', async () => {
       server.use(
-        http.get(`${API_URL}/quizzes/:quizId`, () => {
+        http.get(`${API_URL}/content/quizzes/:quizId`, () => {
           return HttpResponse.json(
             { error: mockErrors.server },
             { status: 500 }
@@ -121,12 +121,13 @@ describe('useQuiz', () => {
     const validQuiz: CreateQuizInput = {
       title: 'New Quiz',
       description: 'A new quiz description',
+      topicId: '1',
       questions: [
         {
           text: 'New question',
           type: 'multiple_choice',
-          options: [{ text: 'Option 1' }, { text: 'Option 2' }],
-          correctOptionId: '1',
+          options: ['Option 1', 'Option 2'],
+          correctAnswer: 'Option 1',
         },
       ],
     }
@@ -147,7 +148,7 @@ describe('useQuiz', () => {
 
     it('handles validation error', async () => {
       server.use(
-        http.post(`${API_URL}/quizzes`, () => {
+        http.post(`${API_URL}/content/quizzes`, () => {
           return HttpResponse.json(
             { error: mockErrors.validation },
             { status: 400 }
@@ -162,6 +163,7 @@ describe('useQuiz', () => {
       result.current.createQuiz.mutate({
         title: '',
         description: '',
+        topicId: '1',
         questions: [],
       })
 
@@ -174,7 +176,7 @@ describe('useQuiz', () => {
 
     it('handles unauthorized error', async () => {
       server.use(
-        http.post(`${API_URL}/quizzes`, () => {
+        http.post(`${API_URL}/content/quizzes`, () => {
           return HttpResponse.json(
             { error: mockErrors.unauthorized },
             { status: 401 }
@@ -218,7 +220,7 @@ describe('useQuiz', () => {
 
     it('handles not found error', async () => {
       server.use(
-        http.patch(`${API_URL}/quizzes/:quizId`, () => {
+        http.patch(`${API_URL}/content/quizzes/:quizId`, () => {
           return HttpResponse.json(
             { error: mockErrors.notFound },
             { status: 404 }
@@ -271,7 +273,7 @@ describe('useQuiz', () => {
 
     it('handles not found error', async () => {
       server.use(
-        http.delete(`${API_URL}/quizzes/:quizId`, () => {
+        http.delete(`${API_URL}/content/quizzes/:quizId`, () => {
           return HttpResponse.json(
             { error: mockErrors.notFound },
             { status: 404 }

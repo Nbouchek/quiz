@@ -50,7 +50,13 @@ export default function QuizAttemptPage() {
           // If it's a simple string of correct length, try to format it
           const cleanId = quizId.replace(/-/g, '')
           if (cleanId.length === 32) {
-            formattedQuizId = `${cleanId.slice(0, 8)}-${cleanId.slice(8, 12)}-${cleanId.slice(12, 16)}-${cleanId.slice(16, 20)}-${cleanId.slice(20)}`
+            formattedQuizId = `${cleanId.slice(0, 8)}-${cleanId.slice(
+              8,
+              12
+            )}-${cleanId.slice(12, 16)}-${cleanId.slice(
+              16,
+              20
+            )}-${cleanId.slice(20)}`
           }
         }
 
@@ -118,13 +124,22 @@ export default function QuizAttemptPage() {
   const loadQuestion = async (attemptId: string, questionIndex: number) => {
     try {
       const response = await fetch(
-        `${STUDY_API_URL}/attempts/${attemptId}/questions/${questionIndex}`
+        `${STUDY_API_URL}/attempts/${attemptId}/questions`
       )
       if (!response.ok) {
-        throw new Error('Failed to load question')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to load question')
       }
       const data = await response.json()
-      setCurrentQuestion(data.data)
+      if (!data.data || !Array.isArray(data.data)) {
+        throw new Error('Invalid question data format')
+      }
+      // Get the question at the current index
+      const questions = data.data
+      if (!questions[questionIndex]) {
+        throw new Error('Question not found')
+      }
+      setCurrentQuestion(questions[questionIndex])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load question')
     }
@@ -144,12 +159,14 @@ export default function QuizAttemptPage() {
           body: JSON.stringify({
             questionId: currentQuestion.id,
             answer: selectedAnswer,
+            isCorrect: currentQuestion.options[0] === selectedAnswer, // TODO: Replace with actual answer validation
           }),
         }
       )
 
       if (!response.ok) {
-        throw new Error('Failed to submit answer')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to submit answer')
       }
 
       if (attempt.currentQuestionIndex + 1 >= attempt.totalQuestions) {
@@ -180,7 +197,8 @@ export default function QuizAttemptPage() {
       )
 
       if (!response.ok) {
-        throw new Error('Failed to complete attempt')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to complete attempt')
       }
 
       router.push(`/quiz-result/${attempt.id}`)
