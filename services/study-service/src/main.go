@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -39,6 +41,19 @@ func main() {
 	// Initialize router
 	r := gin.Default()
 
+	// Debug logging middleware
+	r.Use(func(c *gin.Context) {
+		log.Printf("Received request: %s %s", c.Request.Method, c.Request.URL.Path)
+		log.Printf("Request headers: %v", c.Request.Header)
+		if c.Request.Body != nil {
+			bodyBytes, _ := c.GetRawData()
+			log.Printf("Request body: %s", string(bodyBytes))
+			// Restore the body for further processing
+			c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+		}
+		c.Next()
+	})
+
 	// Configure CORS
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:3000"},
@@ -55,13 +70,24 @@ func main() {
 		})
 	})
 
-	// Quiz attempt routes
+	// Quiz attempt routes - ensure no leading slashes
 	r.POST("/attempts", quizAttemptHandler.StartAttempt)
 	r.GET("/attempts/:id", quizAttemptHandler.GetAttempt)
 	r.GET("/attempts/:id/questions", quizAttemptHandler.GetQuestions)
 	r.POST("/attempts/:id/answers", quizAttemptHandler.SubmitAnswer)
 	r.POST("/attempts/:id/complete", quizAttemptHandler.CompleteAttempt)
 	r.GET("/users/:id/attempts", quizAttemptHandler.ListUserAttempts)
+
+	// Add a catch-all route for debugging
+	r.NoRoute(func(c *gin.Context) {
+		log.Printf("No route found for %s %s", c.Request.Method, c.Request.URL.Path)
+		c.JSON(404, gin.H{
+			"status": 404,
+			"error": "Route not found",
+			"path": c.Request.URL.Path,
+			"success": false,
+		})
+	})
 
 	// Get port from environment variable
 	port := os.Getenv("PORT")

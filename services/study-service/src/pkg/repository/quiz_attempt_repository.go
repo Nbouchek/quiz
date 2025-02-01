@@ -154,7 +154,7 @@ func (r *PostgresQuizAttemptRepository) ListUserAttempts(ctx context.Context, us
 // AddAnswer adds a new answer to a quiz attempt
 func (r *PostgresQuizAttemptRepository) AddAnswer(ctx context.Context, answer *models.Answer) error {
 	query := `
-		INSERT INTO quiz_answers (
+		INSERT INTO answers (
 			id, attempt_id, question_id, answer, is_correct, created_at
 		) VALUES ($1, $2, $3, $4, $5, $6)`
 
@@ -169,7 +169,7 @@ func (r *PostgresQuizAttemptRepository) AddAnswer(ctx context.Context, answer *m
 func (r *PostgresQuizAttemptRepository) GetAttemptAnswers(ctx context.Context, attemptID uuid.UUID) ([]models.Answer, error) {
 	query := `
 		SELECT id, attempt_id, question_id, answer, is_correct, created_at
-		FROM quiz_answers
+		FROM answers
 		WHERE attempt_id = $1
 		ORDER BY created_at ASC`
 
