@@ -69,7 +69,7 @@ export function useQuiz(quizId?: string, options: UseQuizOptions = {}) {
     mutationFn: async (input) => {
       console.log('Creating quiz with input:', JSON.stringify(input, null, 2))
       const response = await axios.post<ApiResponse<Quiz>>(
-        QUIZ_API_URL,
+        `${QUIZ_API_URL}/`,
         {
           ...input,
           questions: input.questions.map((q) => ({
@@ -88,8 +88,12 @@ export function useQuiz(quizId?: string, options: UseQuizOptions = {}) {
       return response.data.data
     },
     onSuccess: (newQuiz) => {
+      console.log('Quiz created successfully:', newQuiz)
       queryClient.setQueryData(['quiz', newQuiz.id], newQuiz)
       queryClient.invalidateQueries({ queryKey: ['quizzes'] })
+    },
+    onError: (error) => {
+      console.error('Failed to create quiz:', error)
     },
   })
 

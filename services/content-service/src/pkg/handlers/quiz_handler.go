@@ -62,6 +62,8 @@ func (h *QuizHandler) GetQuiz(c *gin.Context) {
 
 // CreateQuiz handles POST /api/quizzes
 func (h *QuizHandler) CreateQuiz(c *gin.Context) {
+	log.Printf("Received quiz creation request")
+	
 	var input struct {
 		Title       string           `json:"title"`
 		Description string           `json:"description"`
@@ -70,9 +72,13 @@ func (h *QuizHandler) CreateQuiz(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
+		log.Printf("Failed to bind JSON: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
 		return
 	}
+
+	log.Printf("Creating quiz with title: %s, description: %s, topicId: %s", input.Title, input.Description, input.TopicID)
+	log.Printf("Questions: %+v", input.Questions)
 
 	// Use a default user ID for now
 	defaultUserID := uuid.MustParse("00000000-0000-0000-0000-000000000001")
@@ -85,18 +91,22 @@ func (h *QuizHandler) CreateQuiz(c *gin.Context) {
 		CreatorID:   defaultUserID,
 	}
 
+	log.Printf("Saving quiz to database with ID: %s", quiz.ID)
 	if err := h.repo.CreateQuiz(c.Request.Context(), quiz); err != nil {
+		log.Printf("Failed to create quiz: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create quiz"})
 		return
 	}
 
 	// Create questions
 	var questions []*models.Question
-	for _, q := range input.Questions {
+	for i, q := range input.Questions {
 		question := q // Create a new variable to avoid using the loop variable address
 		question.ID = uuid.New()
 		question.QuizID = quiz.ID
+		log.Printf("Creating question %d with ID: %s", i+1, question.ID)
 		if err := h.repo.AddQuestion(c.Request.Context(), &question); err != nil {
+			log.Printf("Failed to create question: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create quiz questions"})
 			return
 		}
@@ -106,6 +116,7 @@ func (h *QuizHandler) CreateQuiz(c *gin.Context) {
 	// Add questions to the quiz object for the response
 	quiz.Questions = questions
 
+	log.Printf("Successfully created quiz with ID: %s and %d questions", quiz.ID, len(questions))
 	c.JSON(http.StatusCreated, gin.H{
 		"data": quiz,
 		"success": true,
@@ -307,5 +318,28 @@ func (h *QuizHandler) SearchQuizzes(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"quizzes": quizzes,
+	})
+}
+
+// GetQuizQuestions handles GET /api/quizzes/:id/questions
+func (h *QuizHandler) GetQuizQuestions(c *gin.Context) {
+	quizId, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid quiz ID"})
+		return
+	}
+
+	log.Printf("Fetching questions for quiz: %s", quizId)
+	questions, err := h.repo.ListQuizQuestions(c.Request.Context(), quizId)
+	if err != nil {
+		log.Printf("Error fetching questions: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch quiz questions"})
+		return
+	}
+
+	log.Printf("Returning %d questions", len(questions))
+	c.JSON(http.StatusOK, gin.H{
+		"data": questions,
+		"success": true,
 	})
 } 

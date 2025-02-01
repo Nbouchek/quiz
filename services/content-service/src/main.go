@@ -40,6 +40,7 @@ func main() {
     {
         quizzes.GET("/", quizHandler.ListQuizzes)
         quizzes.GET("/:id", quizHandler.GetQuiz)
+        quizzes.GET("/:id/questions", quizHandler.GetQuizQuestions)
         quizzes.POST("/", quizHandler.CreateQuiz)
         quizzes.PATCH("/:id", quizHandler.UpdateQuiz)
         quizzes.DELETE("/:id", quizHandler.DeleteQuiz)
@@ -51,6 +52,7 @@ func main() {
         {
             apiQuizzes.GET("/", quizHandler.ListQuizzes)
             apiQuizzes.GET("/:id", quizHandler.GetQuiz)
+            apiQuizzes.GET("/:id/questions", quizHandler.GetQuizQuestions)
             apiQuizzes.POST("/", quizHandler.CreateQuiz)
             apiQuizzes.PATCH("/:id", quizHandler.UpdateQuiz)
             apiQuizzes.DELETE("/:id", quizHandler.DeleteQuiz)

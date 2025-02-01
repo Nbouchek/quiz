@@ -9,9 +9,11 @@ const port = 8082;
 app.use(
   cors({
     origin: "http://localhost:3000",
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
     credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   })
 );
 
@@ -19,11 +21,47 @@ app.use(express.json());
 
 // Logging middleware
 app.use((req, res, next) => {
-  console.log(`[API Gateway] ${req.method} ${req.url}`);
-  console.log("[API Gateway] Headers:", req.headers);
-  if (req.body) {
-    console.log("[API Gateway] Body:", req.body);
+  const requestId = Math.random().toString(36).substring(7);
+  console.log(`[API Gateway] [${requestId}] ${req.method} ${req.url}`);
+  console.log(`[API Gateway] [${requestId}] Headers:`, req.headers);
+  if (req.body && Object.keys(req.body).length > 0) {
+    console.log(
+      `[API Gateway] [${requestId}] Request Body:`,
+      JSON.stringify(req.body, null, 2)
+    );
   }
+
+  // Capture response
+  const oldWrite = res.write;
+  const oldEnd = res.end;
+  const chunks = [];
+
+  res.write = function (chunk) {
+    chunks.push(chunk);
+    return oldWrite.apply(res, arguments);
+  };
+
+  res.end = function (chunk) {
+    if (chunk) {
+      chunks.push(chunk);
+    }
+    const responseBody = Buffer.concat(chunks).toString("utf8");
+    console.log(
+      `[API Gateway] [${requestId}] Response Status:`,
+      res.statusCode
+    );
+    try {
+      const parsedBody = JSON.parse(responseBody);
+      console.log(
+        `[API Gateway] [${requestId}] Response Body:`,
+        JSON.stringify(parsedBody, null, 2)
+      );
+    } catch (e) {
+      console.log(`[API Gateway] [${requestId}] Response Body:`, responseBody);
+    }
+    oldEnd.apply(res, arguments);
+  };
+
   next();
 });
 
@@ -33,9 +71,9 @@ const serviceProxies = {
     target: "http://user-service:8080",
     pathRewrite: { "^/users": "" },
   },
-  "/quizzes": {
+  "/content": {
     target: "http://content-service:8081",
-    pathRewrite: { "^/quizzes": "/quizzes" },
+    pathRewrite: { "^/content": "" },
   },
   "/ai": {
     target: "http://ai-service:8083",
@@ -56,9 +94,10 @@ Object.entries(serviceProxies).forEach(([path, { target, pathRewrite }]) => {
       changeOrigin: true,
       pathRewrite,
       onProxyReq: (proxyReq, req, res) => {
+        const requestId = Math.random().toString(36).substring(7);
         // Log the original and rewritten URLs for debugging
         console.log(
-          `[API Gateway] ${path} service proxy details:
+          `[API Gateway] [${requestId}] ${path} service proxy details:
   Original URL: ${req.url}
   Proxy URL: ${proxyReq.path}
   Method: ${req.method}
@@ -70,9 +109,22 @@ Object.entries(serviceProxies).forEach(([path, { target, pathRewrite }]) => {
           proxyReq.setHeader("Content-Type", "application/json");
           proxyReq.setHeader("Content-Length", Buffer.byteLength(bodyData));
           proxyReq.write(bodyData);
+          console.log(
+            `[API Gateway] [${requestId}] Forwarding request body:`,
+            bodyData
+          );
         }
       },
       onProxyRes: (proxyRes, req, res) => {
+        const requestId = Math.random().toString(36).substring(7);
+        console.log(
+          `[API Gateway] [${requestId}] Received response from service:`,
+          {
+            statusCode: proxyRes.statusCode,
+            headers: proxyRes.headers,
+          }
+        );
+
         let responseBody = "";
         proxyRes.on("data", (chunk) => {
           responseBody += chunk;
@@ -80,27 +132,43 @@ Object.entries(serviceProxies).forEach(([path, { target, pathRewrite }]) => {
 
         proxyRes.on("end", () => {
           if (res.headersSent) {
+            console.log(`[API Gateway] [${requestId}] Headers already sent`);
             return;
           }
 
+          console.log(
+            `[API Gateway] [${requestId}] Raw response body:`,
+            responseBody
+          );
+
           // If the response is empty and status is 404, send a proper 404 response
           if (!responseBody && proxyRes.statusCode === 404) {
-            res.status(404).json({
+            const response = {
               status: 404,
               success: false,
               error: "Not Found",
               message: "The requested resource was not found",
-            });
+            };
+            console.log(
+              `[API Gateway] [${requestId}] Sending 404 response:`,
+              response
+            );
+            res.status(404).json(response);
             return;
           }
 
           // If the response is empty but not 404, send status with empty data
           if (!responseBody) {
-            res.status(proxyRes.statusCode).json({
+            const response = {
               status: proxyRes.statusCode,
               success: proxyRes.statusCode < 400,
               data: null,
-            });
+            };
+            console.log(
+              `[API Gateway] [${requestId}] Sending empty response:`,
+              response
+            );
+            res.status(proxyRes.statusCode).json(response);
             return;
           }
 
@@ -118,29 +186,47 @@ Object.entries(serviceProxies).forEach(([path, { target, pathRewrite }]) => {
               delete response.data;
             }
 
+            console.log(
+              `[API Gateway] [${requestId}] Sending response:`,
+              response
+            );
             res.status(proxyRes.statusCode).json(response);
           } catch (error) {
-            console.error("[API Gateway] JSON parse error:", error);
+            console.error(
+              `[API Gateway] [${requestId}] JSON parse error:`,
+              error
+            );
             if (!res.headersSent) {
-              res.status(502).json({
+              const response = {
                 status: 502,
                 success: false,
                 error: "Bad Gateway",
                 message: "Invalid JSON response from service",
-              });
+              };
+              console.log(
+                `[API Gateway] [${requestId}] Sending error response:`,
+                response
+              );
+              res.status(502).json(response);
             }
           }
         });
       },
       onError: (err, req, res) => {
-        console.error("[API Gateway] Proxy error:", err);
+        const requestId = Math.random().toString(36).substring(7);
+        console.error(`[API Gateway] [${requestId}] Proxy error:`, err);
         if (!res.headersSent) {
-          res.status(500).json({
+          const response = {
             status: 500,
             error: "Internal Server Error",
             message: err.message,
             success: false,
-          });
+          };
+          console.log(
+            `[API Gateway] [${requestId}] Sending error response:`,
+            response
+          );
+          res.status(500).json(response);
         }
       },
     })

@@ -6,9 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
 
 	"QuizApp/services/study-service/src/pkg/models"
+
+	"bytes"
 
 	"github.com/google/uuid"
 )
@@ -201,16 +205,24 @@ func (r *PostgresQuizAttemptRepository) GetAttemptAnswers(ctx context.Context, a
 
 // GetQuestions retrieves all questions for a quiz
 func (r *PostgresQuizAttemptRepository) GetQuestions(ctx context.Context, quizID uuid.UUID) ([]*models.Question, error) {
-	// Make a request to the content service to get the questions
-	contentServiceURL := "http://content-service:8085"
-	resp, err := http.Get(fmt.Sprintf("%s/quizzes/%s/questions", contentServiceURL, quizID))
+	// Make a request to the content service through the API gateway
+	contentServiceURL := "http://api-gateway:8082"
+	resp, err := http.Get(fmt.Sprintf("%s/content/quizzes/%s/questions", contentServiceURL, quizID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch questions from content service: %v", err)
 	}
 	defer resp.Body.Close()
 
+	// Log the response status code and body for debugging
+	body, _ := io.ReadAll(resp.Body)
+	log.Printf("Content service response status: %d", resp.StatusCode)
+	log.Printf("Content service response body: %s", string(body))
+
+	// Reset the response body for further processing
+	resp.Body = io.NopCloser(bytes.NewBuffer(body))
+
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("content service returned status %d", resp.StatusCode)
+		return nil, fmt.Errorf("content service returned status %d: %s", resp.StatusCode, string(body))
 	}
 
 	var response struct {
