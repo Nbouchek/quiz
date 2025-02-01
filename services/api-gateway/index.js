@@ -74,6 +74,15 @@ const serviceProxies = {
   "/content": {
     target: "http://content-service:8081",
     pathRewrite: { "^/content": "" },
+    router: function (req) {
+      const path = req.path.replace(/^\/content/, "");
+      return {
+        protocol: "http:",
+        host: "content-service",
+        port: 8081,
+        path: path,
+      };
+    },
   },
   "/ai": {
     target: "http://ai-service:8083",

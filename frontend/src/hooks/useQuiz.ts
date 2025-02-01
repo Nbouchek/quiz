@@ -69,7 +69,7 @@ export function useQuiz(quizId?: string, options: UseQuizOptions = {}) {
     mutationFn: async (input) => {
       console.log('Creating quiz with input:', JSON.stringify(input, null, 2))
       const response = await axios.post<ApiResponse<Quiz>>(
-        `${QUIZ_API_URL}/`,
+        QUIZ_API_URL,
         {
           ...input,
           questions: input.questions.map((q) => ({

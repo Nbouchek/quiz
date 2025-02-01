@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import axios from 'axios'
 import { QuizAttempt, Question } from '../types/quiz'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8082'
+import { STUDY_API_URL } from '@/config/constants'
 
 export const useQuizAttempt = () => {
   const [error, setError] = useState<string | null>(null)
@@ -12,7 +11,7 @@ export const useQuizAttempt = () => {
     totalQuestions: number
   ): Promise<QuizAttempt> => {
     try {
-      const response = await axios.post(`${API_URL}/study/attempts`, {
+      const response = await axios.post(`${STUDY_API_URL}/attempts`, {
         quizId,
         totalQuestions,
         userId: '00000000-0000-0000-0000-000000000001', // TODO: Get from auth context
@@ -29,7 +28,7 @@ export const useQuizAttempt = () => {
   const getQuestions = async (attemptId: string): Promise<Question[]> => {
     try {
       const response = await axios.get(
-        `${API_URL}/study/attempts/${attemptId}/questions`
+        `${STUDY_API_URL}/attempts/${attemptId}/questions`
       )
       return response.data.data
     } catch (err) {
@@ -46,7 +45,7 @@ export const useQuizAttempt = () => {
     answer: string
   ): Promise<void> => {
     try {
-      await axios.post(`${API_URL}/study/attempts/${attemptId}/answers`, {
+      await axios.post(`${STUDY_API_URL}/attempts/${attemptId}/answers`, {
         questionId,
         answer,
       })
@@ -61,7 +60,7 @@ export const useQuizAttempt = () => {
   const completeAttempt = async (attemptId: string): Promise<QuizAttempt> => {
     try {
       const response = await axios.post(
-        `${API_URL}/study/attempts/${attemptId}/complete`
+        `${STUDY_API_URL}/attempts/${attemptId}/complete`
       )
       return response.data.data
     } catch (err) {
@@ -74,7 +73,7 @@ export const useQuizAttempt = () => {
 
   const getAttempt = async (attemptId: string): Promise<QuizAttempt> => {
     try {
-      const response = await axios.get(`${API_URL}/study/attempts/${attemptId}`)
+      const response = await axios.get(`${STUDY_API_URL}/attempts/${attemptId}`)
       return response.data.data
     } catch (err) {
       const message =
