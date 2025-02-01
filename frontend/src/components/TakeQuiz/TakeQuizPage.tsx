@@ -1,17 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
-import {
-  Box,
-  Container,
-  Button,
-  CircularProgress,
-  Paper,
-  Alert,
-} from '@mui/material'
+import { ExclamationCircleIcon, ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
 import QuizQuestion from './QuizQuestion'
-import QuizProgress from './QuizProgress'
 import { useQuizAttempt } from '../../hooks/useQuizAttempt'
 import { Question, QuizAttempt } from '../../types/quiz'
+import { cn } from '../../utils/cn'
 
 const TakeQuizPage: React.FC = () => {
   const router = useRouter()
@@ -22,23 +15,18 @@ const TakeQuizPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [attempt, setAttempt] = useState<QuizAttempt | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const { startAttempt, getQuestions, submitAnswer, completeAttempt } =
-    useQuizAttempt()
+  const { startAttempt, getQuestions, submitAnswer, completeAttempt } = useQuizAttempt()
 
   useEffect(() => {
     const initializeQuiz = async () => {
       if (!quizId || typeof quizId !== 'string') return
       try {
-        // Start a new quiz attempt
-        const newAttempt = await startAttempt(quizId, 10) // 10 questions per quiz
+        const newAttempt = await startAttempt(quizId, 10)
         setAttempt(newAttempt)
-
-        // Fetch questions for this attempt
         const quizQuestions = await getQuestions(newAttempt.id)
         setQuestions(quizQuestions)
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Failed to start quiz'
+        const message = error instanceof Error ? error.message : 'Failed to start quiz'
         setError(message)
         console.error('Failed to start quiz:', error)
       }
@@ -59,8 +47,7 @@ const TakeQuizPage: React.FC = () => {
         setCurrentQuestionIndex(currentQuestionIndex + 1)
       }
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Failed to submit answer'
+      const message = error instanceof Error ? error.message : 'Failed to submit answer'
       setError(message)
       console.error('Failed to submit answer:', error)
     } finally {
@@ -74,11 +61,9 @@ const TakeQuizPage: React.FC = () => {
     try {
       setIsSubmitting(true)
       const completedAttempt = await completeAttempt(attempt.id)
-      // Navigate to results page
       router.push(`/quiz/${quizId}/results/${completedAttempt.id}`)
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Failed to complete quiz'
+      const message = error instanceof Error ? error.message : 'Failed to complete quiz'
       setError(message)
       console.error('Failed to complete quiz:', error)
     } finally {
@@ -88,33 +73,40 @@ const TakeQuizPage: React.FC = () => {
 
   if (error) {
     return (
-      <Container>
-        <Box
-          display="flex"
-          justifyContent="center"
-          alignItems="center"
-          minHeight="60vh"
-        >
-          <Alert severity="error" onClose={() => setError(null)}>
-            {error}
-          </Alert>
-        </Box>
-      </Container>
+      <div className="flex min-h-[60vh] items-center justify-center px-4">
+        <div className="w-full max-w-lg rounded-lg bg-red-50 p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <ExclamationCircleIcon className="h-5 w-5 text-red-400" aria-hidden="true" />
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">Error</h3>
+              <div className="mt-2 text-sm text-red-700">
+                <p>{error}</p>
+              </div>
+              <div className="mt-4">
+                <div className="-mx-2 -my-1.5 flex">
+                  <button
+                    type="button"
+                    onClick={() => setError(null)}
+                    className="rounded-md bg-red-50 px-2 py-1.5 text-sm font-medium text-red-800 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 focus:ring-offset-red-50"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     )
   }
 
   if (!attempt || questions.length === 0) {
     return (
-      <Container>
-        <Box
-          display="flex"
-          justifyContent="center"
-          alignItems="center"
-          minHeight="60vh"
-        >
-          <CircularProgress />
-        </Box>
-      </Container>
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600"></div>
+      </div>
     )
   }
 
@@ -122,60 +114,57 @@ const TakeQuizPage: React.FC = () => {
   const isLastQuestion = currentQuestionIndex === questions.length - 1
 
   return (
-    <Container maxWidth="md">
-      <Box py={4}>
-        <Paper elevation={3}>
-          <Box p={4}>
-            <QuizProgress
-              currentQuestion={currentQuestionIndex + 1}
-              totalQuestions={questions.length}
-            />
+    <div className="mx-auto max-w-4xl px-4 py-8">
+      <div className="overflow-hidden rounded-2xl bg-white shadow-xl">
+        <div className="p-6">
+          <QuizQuestion
+            question={currentQuestion}
+            onSubmit={handleAnswerSubmit}
+            isSubmitting={isSubmitting}
+            currentQuestionNumber={currentQuestionIndex + 1}
+            totalQuestions={questions.length}
+          />
 
-            <Box my={4}>
-              <QuizQuestion
-                question={currentQuestion}
-                onSubmit={handleAnswerSubmit}
-                isSubmitting={isSubmitting}
-              />
-            </Box>
-
-            <Box display="flex" justifyContent="space-between" mt={4}>
-              <Button
-                variant="outlined"
-                disabled={currentQuestionIndex === 0}
-                onClick={() =>
-                  setCurrentQuestionIndex(currentQuestionIndex - 1)
-                }
-              >
-                Previous
-              </Button>
-
-              {isLastQuestion ? (
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleQuizComplete}
-                  disabled={isSubmitting}
-                >
-                  Complete Quiz
-                </Button>
-              ) : (
-                <Button
-                  variant="contained"
-                  color="primary"
-                  disabled={!answers[currentQuestion.id] || isSubmitting}
-                  onClick={() =>
-                    setCurrentQuestionIndex(currentQuestionIndex + 1)
-                  }
-                >
-                  Next Question
-                </Button>
+          <div className="mt-8 flex items-center justify-between border-t border-gray-200 pt-6">
+            <button
+              type="button"
+              onClick={() => setCurrentQuestionIndex(currentQuestionIndex - 1)}
+              disabled={currentQuestionIndex === 0}
+              className={cn(
+                'inline-flex items-center rounded-md px-4 py-2 text-sm font-medium',
+                currentQuestionIndex === 0
+                  ? 'cursor-not-allowed text-gray-400'
+                  : 'text-gray-700 hover:bg-gray-50'
               )}
-            </Box>
-          </Box>
-        </Paper>
-      </Box>
-    </Container>
+            >
+              <ArrowLeftIcon className="mr-2 h-5 w-5" />
+              Previous
+            </button>
+
+            {isLastQuestion ? (
+              <button
+                type="button"
+                onClick={handleQuizComplete}
+                disabled={isSubmitting}
+                className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Complete Quiz
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setCurrentQuestionIndex(currentQuestionIndex + 1)}
+                disabled={!answers[currentQuestion.id] || isSubmitting}
+                className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Next Question
+                <ArrowRightIcon className="ml-2 h-5 w-5" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 

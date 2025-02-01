@@ -12,6 +12,12 @@ interface QuizQuestionProps {
   totalQuestions: number
 }
 
+interface RadioOptionRenderProps {
+  active: boolean
+  checked: boolean
+  disabled: boolean
+}
+
 const QuizQuestion: React.FC<QuizQuestionProps> = ({
   question,
   onSubmit,
@@ -57,7 +63,7 @@ const QuizQuestion: React.FC<QuizQuestionProps> = ({
               <RadioGroup.Option
                 key={index}
                 value={option}
-                className={({ active, checked }) =>
+                className={({ active, checked }: RadioOptionRenderProps) =>
                   cn(
                     'relative flex cursor-pointer rounded-lg px-5 py-4 shadow-md focus:outline-none',
                     active && 'ring-2 ring-indigo-600 ring-offset-2',
@@ -68,7 +74,7 @@ const QuizQuestion: React.FC<QuizQuestionProps> = ({
                   )
                 }
               >
-                {({ checked }) => (
+                {({ checked }: { checked: boolean }) => (
                   <>
                     <div className="flex w-full items-center justify-between">
                       <div className="flex items-center">
