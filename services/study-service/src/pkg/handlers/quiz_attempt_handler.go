@@ -5,8 +5,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/QuizApp/study-service/src/pkg/models"
-	"github.com/QuizApp/study-service/src/pkg/repository"
+	"github.com/QuizApp/QuizApp/services/study-service/src/pkg/models"
+	"github.com/QuizApp/QuizApp/services/study-service/src/pkg/repository"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )

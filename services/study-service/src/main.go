@@ -12,9 +12,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/QuizApp/study-service/src/pkg/database"
-	"github.com/QuizApp/study-service/src/pkg/handlers"
-	"github.com/QuizApp/study-service/src/pkg/repository"
+	"github.com/QuizApp/QuizApp/services/study-service/src/pkg/database"
+	"github.com/QuizApp/QuizApp/services/study-service/src/pkg/handlers"
+	"github.com/QuizApp/QuizApp/services/study-service/src/pkg/repository"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
