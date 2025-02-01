@@ -1,11 +1,11 @@
 {
-  "name": "api-gateway",
+  "name": "quizapp-api-gateway",
   "version": "1.0.0",
   "description": "API Gateway for QuizApp",
-  "main": "index.js",
+  "main": "src/server.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js"
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -13,6 +13,6 @@
     "http-proxy-middleware": "^2.0.6"
   },
   "devDependencies": {
-    "nodemon": "^2.0.22"
+    "nodemon": "^3.0.2"
   }
 }
