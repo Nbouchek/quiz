@@ -37,7 +37,7 @@ type Quiz struct {
 	ID          uuid.UUID    `json:"id"`
 	Title       string       `json:"title"`
 	Description string       `json:"description"`
-	TopicID     uuid.UUID   `json:"topicId"`
+	TopicID     *uuid.UUID   `json:"topicId,omitempty"`
 	CreatorID   uuid.UUID   `json:"creatorId"`
 	Questions   []*Question  `json:"questions"`
 	CreatedAt   time.Time    `json:"createdAt"`

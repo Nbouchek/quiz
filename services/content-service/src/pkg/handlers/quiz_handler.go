@@ -67,7 +67,7 @@ func (h *QuizHandler) CreateQuiz(c *gin.Context) {
 	var input struct {
 		Title       string           `json:"title"`
 		Description string           `json:"description"`
-		TopicID     uuid.UUID       `json:"topicId"`
+		TopicID     *uuid.UUID      `json:"topicId,omitempty"`
 		Questions   []models.Question `json:"questions"`
 	}
 
@@ -77,7 +77,12 @@ func (h *QuizHandler) CreateQuiz(c *gin.Context) {
 		return
 	}
 
-	log.Printf("Creating quiz with title: %s, description: %s, topicId: %s", input.Title, input.Description, input.TopicID)
+	log.Printf("Creating quiz with title: %s, description: %s", input.Title, input.Description)
+	if input.TopicID != nil {
+		log.Printf("TopicID: %s", *input.TopicID)
+	} else {
+		log.Printf("No topic ID provided")
+	}
 	log.Printf("Questions: %+v", input.Questions)
 
 	// Use a default user ID for now
@@ -87,8 +92,11 @@ func (h *QuizHandler) CreateQuiz(c *gin.Context) {
 		ID:          uuid.New(),
 		Title:       input.Title,
 		Description: input.Description,
-		TopicID:     input.TopicID,
 		CreatorID:   defaultUserID,
+	}
+	
+	if input.TopicID != nil {
+		quiz.TopicID = input.TopicID
 	}
 
 	log.Printf("Saving quiz to database with ID: %s", quiz.ID)

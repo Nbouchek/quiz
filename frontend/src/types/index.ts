@@ -83,7 +83,7 @@ export type LoadingState = 'idle' | 'loading' | 'success' | 'error'
 export interface CreateQuizInput {
   title: string
   description: string
-  topicId: string
+  topicId?: string
   questions: Array<Omit<Question, 'id' | 'quizId' | 'createdAt' | 'updatedAt'>>
 }
 
