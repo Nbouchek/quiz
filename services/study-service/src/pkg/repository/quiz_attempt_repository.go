@@ -5,7 +5,8 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/QuizApp/QuizApp/services/study-service/src/pkg/models"
+	"QuizApp/services/study-service/src/pkg/models"
+
 	"github.com/google/uuid"
 )
 

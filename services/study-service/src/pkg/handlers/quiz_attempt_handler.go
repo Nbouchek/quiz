@@ -5,10 +5,11 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/QuizApp/QuizApp/services/study-service/src/pkg/models"
-	"github.com/QuizApp/QuizApp/services/study-service/src/pkg/repository"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+
+	"QuizApp/services/study-service/src/pkg/models"
+	"QuizApp/services/study-service/src/pkg/repository"
 )
 
 // QuizAttemptHandler handles HTTP requests for quiz attempts

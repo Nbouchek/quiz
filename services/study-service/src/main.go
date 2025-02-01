@@ -12,11 +12,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/QuizApp/QuizApp/services/study-service/src/pkg/database"
-	"github.com/QuizApp/QuizApp/services/study-service/src/pkg/handlers"
-	"github.com/QuizApp/QuizApp/services/study-service/src/pkg/repository"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+
+	"QuizApp/services/study-service/src/pkg/database"
+	"QuizApp/services/study-service/src/pkg/handlers"
+	"QuizApp/services/study-service/src/pkg/repository"
 )
 
 func main() {

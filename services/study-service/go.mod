@@ -1,6 +1,8 @@
-module github.com/QuizApp/QuizApp/services/study-service
+module QuizApp/services/study-service
 
 go 1.21
+
+replace QuizApp/services/study-service => ./
 
 require (
 	github.com/gin-contrib/cors v1.5.0
@@ -9,6 +11,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.9
 	go.uber.org/zap v1.27.0
+	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028
 )
 
 require (
