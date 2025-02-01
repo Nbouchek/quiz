@@ -36,91 +36,6 @@ const serviceProxies = {
   "/quizzes": {
     target: "http://content-service:8081",
     pathRewrite: { "^/quizzes": "/quizzes" },
-    changeOrigin: true,
-    onProxyReq: (proxyReq, req, res) => {
-      console.log(
-        `[API Gateway] Proxying to content service: ${req.method} ${req.url} -> ${proxyReq.path}`
-      );
-      if (req.body) {
-        const bodyData = JSON.stringify(req.body);
-        proxyReq.setHeader("Content-Type", "application/json");
-        proxyReq.setHeader("Content-Length", Buffer.byteLength(bodyData));
-        proxyReq.write(bodyData);
-      }
-    },
-    onProxyRes: (proxyRes, req, res) => {
-      let body = [];
-      proxyRes.on("data", (chunk) => {
-        body.push(chunk);
-      });
-
-      proxyRes.on("end", () => {
-        try {
-          body = Buffer.concat(body).toString();
-          let parsedBody;
-
-          try {
-            parsedBody = JSON.parse(body);
-          } catch (e) {
-            parsedBody = body;
-          }
-
-          // Set status code from the proxy response
-          res.status(proxyRes.statusCode);
-
-          // Format error responses
-          if (proxyRes.statusCode >= 400) {
-            const errorResponse = {
-              status: proxyRes.statusCode,
-              error: proxyRes.statusMessage,
-              message:
-                typeof parsedBody === "string"
-                  ? parsedBody
-                  : parsedBody?.error || "Unknown error",
-            };
-            res.json(errorResponse);
-            return;
-          }
-
-          // Handle successful responses
-          res.json({
-            status: proxyRes.statusCode,
-            data: parsedBody.data,
-            success: true,
-          });
-        } catch (error) {
-          console.error("[API Gateway] Error processing response:", error);
-          if (!res.headersSent) {
-            res.status(500).json({
-              status: 500,
-              error: "Internal Server Error",
-              message: "Error processing service response",
-            });
-          }
-        }
-      });
-
-      proxyRes.on("error", (error) => {
-        console.error("[API Gateway] Proxy response error:", error);
-        if (!res.headersSent) {
-          res.status(500).json({
-            status: 500,
-            error: "Internal Server Error",
-            message: error.message,
-          });
-        }
-      });
-    },
-    onError: (err, req, res) => {
-      console.error("[API Gateway] Content service proxy error:", err);
-      if (!res.headersSent) {
-        res.status(500).json({
-          status: 500,
-          error: "Internal Server Error",
-          message: err.message,
-        });
-      }
-    },
   },
   "/ai": {
     target: "http://ai-service:8083",
@@ -129,100 +44,98 @@ const serviceProxies = {
   "/study": {
     target: "http://study-service:8084",
     pathRewrite: { "^/study": "" },
-    changeOrigin: true,
-    onProxyReq: (proxyReq, req, res) => {
-      const originalUrl = req.url;
-      console.log("\n[API Gateway] Study service proxy details:");
-      console.log("  Original URL:", originalUrl);
-      console.log("  Proxy URL:", proxyReq.path);
-      console.log("  Method:", req.method);
-      console.log("  Target:", "http://study-service:8084" + proxyReq.path);
-
-      if (req.body && Object.keys(req.body).length > 0) {
-        const bodyData = JSON.stringify(req.body);
-        proxyReq.setHeader("Content-Type", "application/json");
-        proxyReq.setHeader("Content-Length", Buffer.byteLength(bodyData));
-        proxyReq.write(bodyData);
-      }
-    },
-    onProxyRes: (proxyRes, req, res) => {
-      let responseBody = "";
-
-      proxyRes.on("data", (chunk) => {
-        responseBody += chunk;
-      });
-
-      proxyRes.on("end", () => {
-        let parsedBody;
-        try {
-          // Try to parse the response as JSON
-          parsedBody = responseBody ? JSON.parse(responseBody) : {};
-        } catch (e) {
-          console.error("[API Gateway] Error parsing response:", e);
-          console.error("[API Gateway] Raw response:", responseBody);
-          // If we can't parse the response, send it as is with the original status code
-          if (!res.headersSent) {
-            res.status(proxyRes.statusCode).send(responseBody);
-          }
-          return;
-        }
-
-        // Handle error responses
-        if (proxyRes.statusCode >= 400) {
-          if (!res.headersSent) {
-            res.status(proxyRes.statusCode).json({
-              status: proxyRes.statusCode,
-              error: proxyRes.statusMessage,
-              message: parsedBody.error || "Unknown error",
-            });
-          }
-          return;
-        }
-
-        // Handle successful responses
-        if (!res.headersSent) {
-          res.status(proxyRes.statusCode).json({
-            status: proxyRes.statusCode,
-            data: parsedBody.data || parsedBody,
-            success: true,
-          });
-        }
-      });
-
-      proxyRes.on("error", (error) => {
-        console.error("[API Gateway] Proxy response error:", error);
-        if (!res.headersSent) {
-          res.status(500).json({
-            status: 500,
-            error: "Internal Server Error",
-            message: error.message,
-          });
-        }
-      });
-    },
-    onError: (err, req, res) => {
-      console.error("[API Gateway] Study service proxy error:", err);
-      if (!res.headersSent) {
-        res.status(500).json({
-          status: 500,
-          error: "Internal Server Error",
-          message: err.message,
-        });
-      }
-    },
   },
 };
 
 // Set up proxy middleware for each service
-Object.entries(serviceProxies).forEach(([path, config]) => {
+Object.entries(serviceProxies).forEach(([path, { target, pathRewrite }]) => {
   app.use(
     path,
     createProxyMiddleware({
-      ...config,
+      target,
       changeOrigin: true,
+      pathRewrite,
+      onProxyReq: (proxyReq, req, res) => {
+        console.log(
+          `[API Gateway] Proxying ${req.method} ${req.url} -> ${target}${proxyReq.path}`
+        );
+        if (req.body && Object.keys(req.body).length > 0) {
+          const bodyData = JSON.stringify(req.body);
+          proxyReq.setHeader("Content-Type", "application/json");
+          proxyReq.setHeader("Content-Length", Buffer.byteLength(bodyData));
+          proxyReq.write(bodyData);
+        }
+      },
+      onProxyRes: (proxyRes, req, res) => {
+        let responseBody = "";
+        proxyRes.on("data", (chunk) => {
+          responseBody += chunk;
+        });
+
+        proxyRes.on("end", () => {
+          if (res.headersSent) {
+            console.warn(
+              "[API Gateway] Headers already sent, skipping response processing"
+            );
+            return;
+          }
+
+          try {
+            // Set status code from the proxy response
+            res.status(proxyRes.statusCode);
+
+            // If the response is empty, send empty response
+            if (!responseBody) {
+              res.send();
+              return;
+            }
+
+            let parsedBody;
+            try {
+              parsedBody = JSON.parse(responseBody);
+            } catch (e) {
+              // If not JSON, send raw response
+              res.send(responseBody);
+              return;
+            }
+
+            // Format the response
+            const response = {
+              status: proxyRes.statusCode,
+              success: proxyRes.statusCode < 400,
+            };
+
+            if (proxyRes.statusCode >= 400) {
+              response.error = proxyRes.statusMessage;
+              response.message = parsedBody.error || "Unknown error";
+            } else {
+              response.data = parsedBody.data || parsedBody;
+            }
+
+            res.json(response);
+          } catch (error) {
+            console.error("[API Gateway] Error processing response:", error);
+            if (!res.headersSent) {
+              res.status(500).json({
+                status: 500,
+                error: "Internal Server Error",
+                message: "Error processing service response",
+                success: false,
+              });
+            }
+          }
+        });
+      },
       onError: (err, req, res) => {
-        console.error(`Proxy error: ${err.message}`);
-        res.status(500).json({ error: "Proxy error", details: err.message });
+        console.error("[API Gateway] Proxy error:", err);
+        if (!res.headersSent) {
+          res.status(500).json({
+            status: 500,
+            error: "Internal Server Error",
+            message: err.message,
+            success: false,
+          });
+        }
       },
     })
   );

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/QuizApp/study-service/src/pkg/models"
@@ -22,6 +23,8 @@ func NewQuizAttemptHandler(repo repository.QuizAttemptRepository) *QuizAttemptHa
 
 // StartAttempt handles POST /attempts
 func (h *QuizAttemptHandler) StartAttempt(c *gin.Context) {
+	log.Printf("StartAttempt: Received request")
+	
 	var input struct {
 		UserID         uuid.UUID `json:"userId" binding:"required"`
 		QuizID         uuid.UUID `json:"quizId" binding:"required"`
@@ -29,6 +32,7 @@ func (h *QuizAttemptHandler) StartAttempt(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
+		log.Printf("StartAttempt: Invalid input - %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"status": http.StatusBadRequest,
 			"error": "Invalid input",
@@ -37,8 +41,12 @@ func (h *QuizAttemptHandler) StartAttempt(c *gin.Context) {
 		return
 	}
 
+	log.Printf("StartAttempt: Creating attempt for user %s, quiz %s, total questions %d", 
+		input.UserID, input.QuizID, input.TotalQuestions)
+
 	attempt := models.NewQuizAttempt(input.UserID, input.QuizID, input.TotalQuestions)
 	if err := h.repo.CreateAttempt(c.Request.Context(), attempt); err != nil {
+		log.Printf("StartAttempt: Failed to create attempt - %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status": http.StatusInternalServerError,
 			"error": "Failed to create attempt",
@@ -47,6 +55,7 @@ func (h *QuizAttemptHandler) StartAttempt(c *gin.Context) {
 		return
 	}
 
+	log.Printf("StartAttempt: Successfully created attempt %s", attempt.ID)
 	c.JSON(http.StatusCreated, gin.H{
 		"status": http.StatusCreated,
 		"data": attempt,
