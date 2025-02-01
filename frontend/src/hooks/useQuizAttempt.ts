@@ -2,7 +2,7 @@ import { useState } from 'react'
 import axios from 'axios'
 import { QuizAttempt, Question } from '../types/quiz'
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8082'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8082'
 
 export const useQuizAttempt = () => {
   const [error, setError] = useState<string | null>(null)

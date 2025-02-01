@@ -41,7 +41,7 @@ const QuizQuestion: React.FC<QuizQuestionProps> = ({
           value={selectedAnswer}
           onChange={(e) => setSelectedAnswer(e.target.value)}
         >
-          {question.options.map((option, index) => (
+          {question.options.map((option: string, index: number) => (
             <FormControlLabel
               key={index}
               value={option}

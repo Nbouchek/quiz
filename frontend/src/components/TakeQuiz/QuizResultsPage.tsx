@@ -1,23 +1,20 @@
 import React, { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useRouter } from 'next/router'
 import { Container, Box, CircularProgress, Alert } from '@mui/material'
 import QuizSummary from './QuizSummary'
 import { useQuizAttempt } from '../../hooks/useQuizAttempt'
 import { QuizAttempt } from '../../types/quiz'
 
 const QuizResultsPage: React.FC = () => {
-  const { quizId, attemptId } = useParams<{
-    quizId: string
-    attemptId: string
-  }>()
-  const navigate = useNavigate()
+  const router = useRouter()
+  const { quizId, attemptId } = router.query
   const [attempt, setAttempt] = useState<QuizAttempt | null>(null)
   const [error, setError] = useState<string | null>(null)
   const { getAttempt } = useQuizAttempt()
 
   useEffect(() => {
     const loadAttempt = async () => {
-      if (!attemptId) return
+      if (!attemptId || typeof attemptId !== 'string') return
       try {
         const quizAttempt = await getAttempt(attemptId)
         setAttempt(quizAttempt)
@@ -33,13 +30,13 @@ const QuizResultsPage: React.FC = () => {
   }, [attemptId, getAttempt])
 
   const handleRetry = () => {
-    if (quizId) {
-      navigate(`/quiz/${quizId}`)
+    if (quizId && typeof quizId === 'string') {
+      router.push(`/quiz/${quizId}`)
     }
   }
 
   const handleBack = () => {
-    navigate('/quizzes')
+    router.push('/quizzes')
   }
 
   if (error) {

@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useRouter } from 'next/router'
 import {
   Box,
   Container,
-  Typography,
   Button,
   CircularProgress,
   Paper,
@@ -11,13 +10,12 @@ import {
 } from '@mui/material'
 import QuizQuestion from './QuizQuestion'
 import QuizProgress from './QuizProgress'
-import QuizSummary from './QuizSummary'
 import { useQuizAttempt } from '../../hooks/useQuizAttempt'
 import { Question, QuizAttempt } from '../../types/quiz'
 
 const TakeQuizPage: React.FC = () => {
-  const { quizId } = useParams<{ quizId: string }>()
-  const navigate = useNavigate()
+  const router = useRouter()
+  const { quizId } = router.query
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [questions, setQuestions] = useState<Question[]>([])
   const [answers, setAnswers] = useState<Record<string, string>>({})
@@ -29,7 +27,7 @@ const TakeQuizPage: React.FC = () => {
 
   useEffect(() => {
     const initializeQuiz = async () => {
-      if (!quizId) return
+      if (!quizId || typeof quizId !== 'string') return
       try {
         // Start a new quiz attempt
         const newAttempt = await startAttempt(quizId, 10) // 10 questions per quiz
@@ -71,13 +69,13 @@ const TakeQuizPage: React.FC = () => {
   }
 
   const handleQuizComplete = async () => {
-    if (!attempt) return
+    if (!attempt || !quizId) return
 
     try {
       setIsSubmitting(true)
       const completedAttempt = await completeAttempt(attempt.id)
       // Navigate to results page
-      navigate(`/quiz/${quizId}/results/${completedAttempt.id}`)
+      router.push(`/quiz/${quizId}/results/${completedAttempt.id}`)
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Failed to complete quiz'
