@@ -56,9 +56,15 @@ Object.entries(serviceProxies).forEach(([path, { target, pathRewrite }]) => {
       changeOrigin: true,
       pathRewrite,
       onProxyReq: (proxyReq, req, res) => {
+        // Log the original and rewritten URLs for debugging
         console.log(
-          `[API Gateway] Proxying ${req.method} ${req.url} -> ${target}${proxyReq.path}`
+          `[API Gateway] ${path} service proxy details:
+  Original URL: ${req.url}
+  Proxy URL: ${proxyReq.path}
+  Method: ${req.method}
+  Target: ${target}${proxyReq.path}`
         );
+
         if (req.body && Object.keys(req.body).length > 0) {
           const bodyData = JSON.stringify(req.body);
           proxyReq.setHeader("Content-Type", "application/json");
@@ -77,44 +83,29 @@ Object.entries(serviceProxies).forEach(([path, { target, pathRewrite }]) => {
             return;
           }
 
+          // If the response is empty and status is 404, send a proper 404 response
+          if (!responseBody && proxyRes.statusCode === 404) {
+            res.status(404).json({
+              status: 404,
+              success: false,
+              error: "Not Found",
+              message: "The requested resource was not found",
+            });
+            return;
+          }
+
+          // If the response is empty but not 404, send status with empty data
+          if (!responseBody) {
+            res.status(proxyRes.statusCode).json({
+              status: proxyRes.statusCode,
+              success: proxyRes.statusCode < 400,
+              data: null,
+            });
+            return;
+          }
+
           try {
-            // If the response is empty and status is 404, send a proper 404 response
-            if (!responseBody && proxyRes.statusCode === 404) {
-              res.status(404).json({
-                status: 404,
-                success: false,
-                error: "Not Found",
-                message: "The requested resource was not found",
-              });
-              return;
-            }
-
-            // If the response is empty, send empty response with status
-            if (!responseBody) {
-              res.status(proxyRes.statusCode).json({
-                status: proxyRes.statusCode,
-                success: proxyRes.statusCode < 400,
-                data: null,
-              });
-              return;
-            }
-
-            let parsedBody;
-            try {
-              parsedBody = JSON.parse(responseBody);
-            } catch (e) {
-              console.error("[API Gateway] JSON parse error:", e);
-              // If JSON parsing fails, send error response
-              res.status(502).json({
-                status: 502,
-                success: false,
-                error: "Bad Gateway",
-                message: "Invalid JSON response from service",
-              });
-              return;
-            }
-
-            // Format the response
+            const parsedBody = JSON.parse(responseBody);
             const response = {
               status: proxyRes.statusCode,
               success: proxyRes.statusCode < 400,
@@ -129,13 +120,13 @@ Object.entries(serviceProxies).forEach(([path, { target, pathRewrite }]) => {
 
             res.status(proxyRes.statusCode).json(response);
           } catch (error) {
-            console.error("[API Gateway] Error processing response:", error);
+            console.error("[API Gateway] JSON parse error:", error);
             if (!res.headersSent) {
-              res.status(500).json({
-                status: 500,
+              res.status(502).json({
+                status: 502,
                 success: false,
-                error: "Internal Server Error",
-                message: "Error processing service response",
+                error: "Bad Gateway",
+                message: "Invalid JSON response from service",
               });
             }
           }
