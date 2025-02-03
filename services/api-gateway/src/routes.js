@@ -16,9 +16,18 @@ const studyServiceProxy = createProxyMiddleware({
 const contentServiceProxy = createProxyMiddleware({
   target: "http://content-service:8081",
   pathRewrite: {
+    "^/content/quizzes/?$": "/quizzes/",
+    "^/content/quizzes/(.*)": "/quizzes/$1",
     "^/content": "/",
   },
   changeOrigin: true,
+  followRedirects: true,
+  autoRewrite: true,
+  onProxyReq: (proxyReq, req, res) => {
+    // Log the original and rewritten URLs for debugging
+    console.log(`[Content Service Proxy] Original URL: ${req.url}`);
+    console.log(`[Content Service Proxy] Rewritten URL: ${proxyReq.path}`);
+  },
 });
 
 // User Service Proxy

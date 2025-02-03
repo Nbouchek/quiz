@@ -12,7 +12,7 @@ export interface Quiz {
   id: string
   title: string
   description: string
-  topicId: string
+  topicId?: string
   creatorId: string
   questions: Question[]
   createdAt: string
