@@ -1,9 +1,11 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import type { Quiz, ApiResponse } from '@/types'
 import { API_BASE_URL } from '@/config/constants'
 
 export function useQuizzes() {
+  const queryClient = useQueryClient()
+
   const {
     data: quizzes,
     isLoading,
@@ -80,8 +82,11 @@ export function useQuizzes() {
                 statusText: error.response.statusText,
                 headers: error.response.headers,
                 data: error.response.data,
-                url: error.config?.url || 'unknown',
-                baseURL: error.config?.baseURL || 'unknown',
+                url: error.config?.url,
+                baseURL: error.config?.baseURL,
+                fullUrl: `${error.config?.baseURL ?? ''}${error.config?.url ?? ''}`,
+                method: error.config?.method,
+                requestHeaders: error.config?.headers,
               })
             }
             return Promise.reject(error)
@@ -115,7 +120,7 @@ export function useQuizzes() {
             headers: error.response?.headers,
             url: error.config?.url,
             baseURL: error.config?.baseURL,
-            fullUrl: error.config?.baseURL + error.config?.url,
+            fullUrl: `${error.config?.baseURL ?? ''}${error.config?.url ?? ''}`,
             method: error.config?.method,
             requestHeaders: error.config?.headers,
           })
@@ -166,6 +171,12 @@ export function useQuizzes() {
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
   })
 
+  const refreshQuizzes = async () => {
+    // Invalidate and refetch
+    await queryClient.invalidateQueries({ queryKey: ['quizzes'] })
+    return refetch()
+  }
+
   console.log('useQuizzes hook state:', {
     quizzes,
     isLoading,
@@ -177,5 +188,6 @@ export function useQuizzes() {
     isLoading,
     error,
     refetch,
+    refreshQuizzes,
   }
 }

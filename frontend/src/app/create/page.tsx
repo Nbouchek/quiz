@@ -19,6 +19,7 @@ export default function CreateQuizPage() {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [error, setError] = useState('')
+  const [showConfirmation, setShowConfirmation] = useState(false)
   const [questions, setQuestions] = useState<Question[]>([
     {
       text: '',
@@ -52,8 +53,13 @@ export default function CreateQuizPage() {
       return
     }
 
+    // Show confirmation dialog instead of submitting immediately
+    setShowConfirmation(true)
+  }
+
+  const handleConfirmSubmit = async () => {
     try {
-      const response = await createQuiz.mutateAsync({
+      await createQuiz.mutateAsync({
         title: title.trim(),
         description: description.trim(),
         questions: questions.map((q) => ({
@@ -65,10 +71,13 @@ export default function CreateQuizPage() {
         })),
       })
 
-      router.push(`/quizzes/${response.id}`)
+      // Navigate to explore page to see the new quiz
+      router.push('/explore')
     } catch (error) {
       console.error('Failed to create quiz:', error)
       setError('Failed to create quiz. Please try again.')
+    } finally {
+      setShowConfirmation(false)
     }
   }
 
@@ -317,6 +326,72 @@ export default function CreateQuizPage() {
           </button>
         </div>
       </form>
+
+      {/* Confirmation Dialog */}
+      {showConfirmation && (
+        <div className="fixed inset-0 z-10 overflow-y-auto">
+          <div className="flex min-h-screen items-end justify-center px-4 pb-20 pt-4 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" />
+
+            <div className="inline-block transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6 sm:align-middle">
+              <div className="sm:flex sm:items-start">
+                <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-green-100 sm:mx-0 sm:h-10 sm:w-10">
+                  <svg
+                    className="h-6 w-6 text-green-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth="1.5"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M4.5 12.75l6 6 9-13.5"
+                    />
+                  </svg>
+                </div>
+                <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
+                  <h3 className="text-lg font-medium leading-6 text-gray-900">
+                    Create Quiz
+                  </h3>
+                  <div className="mt-2">
+                    <p className="text-sm text-gray-500">
+                      Are you sure you want to create this quiz? This action
+                      cannot be undone.
+                    </p>
+                    <div className="mt-4">
+                      <h4 className="text-sm font-medium text-gray-900">
+                        Quiz Summary:
+                      </h4>
+                      <ul className="mt-2 list-inside list-disc text-sm text-gray-600">
+                        <li>Title: {title}</li>
+                        <li>Description: {description}</li>
+                        <li>Number of Questions: {questions.length}</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  onClick={handleConfirmSubmit}
+                  className="inline-flex w-full justify-center rounded-md border border-transparent bg-green-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm"
+                >
+                  Create Quiz
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmation(false)}
+                  className="mt-3 inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 sm:mt-0 sm:w-auto sm:text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -6,7 +6,7 @@ import type {
   CreateQuizInput,
   UpdateQuizInput,
 } from '@/types'
-import { QUIZ_API_URL } from '@/config/constants'
+import { API_BASE_URL, QUIZ_API_URL } from '@/config/constants'
 
 interface UseQuizOptions {
   enabled?: boolean
@@ -24,60 +24,173 @@ export function useQuiz(quizId?: string, options: UseQuizOptions = {}) {
     queryFn: async () => {
       if (!quizId) throw new Error('Quiz ID is required')
       console.log('Fetching quiz:', quizId)
-      const response = await axios.get<ApiResponse<Quiz>>(
-        `${QUIZ_API_URL}/${quizId}`
-      )
-      console.log('Raw API Response:', JSON.stringify(response.data, null, 2))
 
-      if (!response.data || !response.data.data) {
-        console.error('Invalid response format:', response.data)
-        throw new Error('Quiz not found')
-      }
+      const url = `${API_BASE_URL}/content/quizzes/${quizId}`
+      console.log('Fetching quiz from:', url)
 
-      const quizData = response.data.data
-      console.log('Quiz data:', JSON.stringify(quizData, null, 2))
+      try {
+        // Create axios instance with default config
+        const axiosInstance = axios.create({
+          baseURL: API_BASE_URL,
+          timeout: 10000,
+          withCredentials: true,
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            Origin: 'http://localhost:3000',
+          },
+        })
 
-      // Validate question structure
-      if (Array.isArray(quizData.questions)) {
-        quizData.questions.forEach((question, index) => {
-          console.log(
-            `Question ${index + 1} structure:`,
-            JSON.stringify(question, null, 2)
-          )
-          if (Array.isArray(question.options)) {
+        // Add request interceptor for debugging
+        axiosInstance.interceptors.request.use(
+          (config) => {
+            console.log('Request config:', {
+              url: config.url,
+              method: config.method,
+              headers: config.headers,
+              withCredentials: config.withCredentials,
+              baseURL: config.baseURL,
+              fullPath: `${config.baseURL}${config.url}`,
+            })
+            return config
+          },
+          (error) => {
+            console.error('Request interceptor error:', error)
+            return Promise.reject(error)
+          }
+        )
+
+        // Add response interceptor for debugging
+        axiosInstance.interceptors.response.use(
+          (response) => {
+            console.log('Response interceptor:', {
+              status: response.status,
+              statusText: response.statusText,
+              headers: response.headers,
+              data: response.data,
+              url: response.config?.url,
+              baseURL: response.config?.baseURL,
+            })
+            return response
+          },
+          (error) => {
+            if (axios.isAxiosError(error) && error.response) {
+              console.error('Response error:', {
+                status: error.response.status,
+                statusText: error.response.statusText,
+                headers: error.response.headers,
+                data: error.response.data,
+                url: error.config?.url,
+                baseURL: error.config?.baseURL,
+                fullUrl: `${error.config?.baseURL ?? ''}${error.config?.url ?? ''}`,
+                method: error.config?.method,
+                requestHeaders: error.config?.headers,
+              })
+            }
+            return Promise.reject(error)
+          }
+        )
+
+        const response = await axiosInstance.get<ApiResponse<Quiz>>(
+          `/content/quizzes/${quizId}`
+        )
+        console.log('Raw API Response:', JSON.stringify(response.data, null, 2))
+
+        if (!response.data || !response.data.data) {
+          console.error('Invalid response format:', response.data)
+          throw new Error('Quiz not found')
+        }
+
+        const quizData = response.data.data
+        console.log('Quiz data:', JSON.stringify(quizData, null, 2))
+
+        // Validate question structure
+        if (Array.isArray(quizData.questions)) {
+          quizData.questions.forEach((question, index) => {
             console.log(
-              `Question ${index + 1} options:`,
-              JSON.stringify(question.options, null, 2)
+              `Question ${index + 1} structure:`,
+              JSON.stringify(question, null, 2)
             )
-          } else {
-            console.error(
-              `Invalid options for question ${index + 1}:`,
-              question.options
+            if (Array.isArray(question.options)) {
+              console.log(
+                `Question ${index + 1} options:`,
+                JSON.stringify(question.options, null, 2)
+              )
+            } else {
+              console.error(
+                `Invalid options for question ${index + 1}:`,
+                question.options
+              )
+            }
+          })
+        } else {
+          console.error('Questions is not an array:', quizData.questions)
+        }
+
+        return quizData
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          const errorMessage = error.response?.data?.message || error.message
+          console.error('API Error:', {
+            message: errorMessage,
+            status: error.response?.status,
+            statusText: error.response?.statusText,
+            data: error.response?.data,
+            url: error.config?.url,
+            baseURL: error.config?.baseURL,
+            fullUrl: `${error.config?.baseURL ?? ''}${error.config?.url ?? ''}`,
+            method: error.config?.method,
+            requestHeaders: error.config?.headers,
+          })
+
+          // Handle specific error cases
+          if (error.response?.status === 401) {
+            throw new Error('Please log in to view this quiz')
+          } else if (error.response?.status === 403) {
+            throw new Error('You do not have permission to view this quiz')
+          } else if (error.response?.status === 404) {
+            throw new Error('Quiz not found')
+          } else if (error.code === 'ECONNABORTED') {
+            throw new Error('Request timed out. Please try again')
+          } else if (error.code === 'ERR_NETWORK') {
+            throw new Error(
+              'Network error. Please check your connection and try again'
             )
           }
-        })
-      } else {
-        console.error('Questions is not an array:', quizData.questions)
-      }
 
-      return quizData
+          throw new Error(`Failed to fetch quiz: ${errorMessage}`)
+        }
+        console.error('Unexpected error:', error)
+        throw new Error('An unexpected error occurred while fetching the quiz')
+      }
     },
     enabled: !!quizId && options.enabled !== false,
+    staleTime: 0,
+    retry: (failureCount, error) => {
+      if (error instanceof Error) {
+        if (
+          error.message.includes('Please log in') ||
+          error.message.includes('permission') ||
+          error.message.includes('not found')
+        ) {
+          return false
+        }
+      }
+      return failureCount < 3
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
   })
 
   const createQuiz = useMutation<Quiz, AxiosError, CreateQuizInput>({
     mutationFn: async (input) => {
       console.log('Creating quiz with input:', JSON.stringify(input, null, 2))
-      const response = await axios.post<ApiResponse<Quiz>>(
-        QUIZ_API_URL,
-        {
-          ...input,
-          questions: input.questions.map((q) => ({
-            ...q,
-            type: q.type || 'multiple_choice',
-          })),
-        }
-      )
+      const response = await axios.post<ApiResponse<Quiz>>(QUIZ_API_URL, {
+        ...input,
+        questions: input.questions.map((q) => ({
+          ...q,
+          type: q.type || 'multiple_choice',
+        })),
+      })
       console.log(
         'Create quiz response:',
         JSON.stringify(response.data, null, 2)
@@ -102,7 +215,7 @@ export function useQuiz(quizId?: string, options: UseQuizOptions = {}) {
       if (!quizId) throw new Error('Quiz ID is required')
       console.log('Updating quiz with input:', JSON.stringify(input, null, 2))
       const response = await axios.patch<ApiResponse<Quiz>>(
-        `${QUIZ_API_URL}/${quizId}`,
+        `${API_BASE_URL}/${quizId}`,
         {
           ...input,
           questions: input.questions?.map((q) => ({
@@ -129,7 +242,7 @@ export function useQuiz(quizId?: string, options: UseQuizOptions = {}) {
   const deleteQuiz = useMutation<void, AxiosError, void>({
     mutationFn: async () => {
       if (!quizId) throw new Error('Quiz ID is required')
-      await axios.delete(`${QUIZ_API_URL}/${quizId}`)
+      await axios.delete(`${API_BASE_URL}/${quizId}`)
     },
     onSuccess: () => {
       queryClient.removeQueries({ queryKey: ['quiz', quizId] })

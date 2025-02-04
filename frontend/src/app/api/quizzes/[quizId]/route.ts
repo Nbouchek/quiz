@@ -4,16 +4,30 @@ import type { Question } from '@/types'
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: { quizId: string } }
 ) {
-  if (!params.id) {
+  if (!params.quizId) {
     return NextResponse.json({ error: 'Quiz ID is required' }, { status: 400 })
   }
 
   try {
-    console.log('Fetching quiz with ID:', params.id)
+    console.log('Fetching quiz with ID:', params.quizId)
+
+    if (!process.env.NEXT_PUBLIC_API_URL) {
+      throw new Error('API URL is not configured')
+    }
+
+    console.log('Using API URL:', process.env.NEXT_PUBLIC_API_URL)
+
     const response = await axios.get(
-      `${process.env.NEXT_PUBLIC_API_URL}/content/quizzes/${params.id}`
+      `${process.env.NEXT_PUBLIC_API_URL}/content/quizzes/${params.quizId}`,
+      {
+        headers: {
+          Accept: 'application/json',
+          Origin: 'http://localhost:3000',
+        },
+        timeout: 5000, // 5 seconds timeout
+      }
     )
 
     // Log the raw response
@@ -60,10 +74,14 @@ export async function GET(
 
     return NextResponse.json(response.data)
   } catch (error) {
+    console.error('Error in API route:', error)
+
     if (error instanceof AxiosError) {
       console.error(
-        'Error fetching quiz:',
-        error.response?.data || error.message
+        'Axios error details:',
+        error.response?.data || error.message,
+        '\nRequest config:',
+        error.config
       )
 
       // Handle 404 specifically

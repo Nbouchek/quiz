@@ -17,6 +17,7 @@ export interface QuizAttempt {
   answers: Answer[]
   totalQuestions: number
   correctAnswers: number
+  currentQuestionIndex?: number
 }
 
 export interface Answer {

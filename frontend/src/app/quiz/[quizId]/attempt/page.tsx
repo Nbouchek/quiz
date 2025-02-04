@@ -4,112 +4,78 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import clsx from 'clsx'
 import { XMarkIcon } from '@heroicons/react/24/outline'
-import { STUDY_API_URL } from '@/config/constants'
-
-interface Question {
-  id: string
-  text: string
-  options: string[]
-  type: 'multiple_choice' | 'true_false' | 'open_ended'
-}
-
-interface QuizAttempt {
-  id: string
-  quizId: string
-  status: 'in_progress' | 'completed' | 'abandoned'
-  currentQuestionIndex: number
-  totalQuestions: number
-  score: number
-}
+import { QUIZ_API_URL } from '@/config/constants'
+import { useQuizAttempt } from '@/hooks/useQuizAttempt'
+import { Question, QuizAttempt } from '@/types/quiz'
 
 export default function QuizAttemptPage() {
   const params = useParams()
   const router = useRouter()
   const [attempt, setAttempt] = useState<QuizAttempt | null>(null)
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null)
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0)
   const [selectedAnswer, setSelectedAnswer] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string>('')
+  const {
+    startAttempt,
+    getQuestions,
+    submitAnswer,
+    completeAttempt: finishAttempt,
+  } = useQuizAttempt()
 
   useEffect(() => {
-    const startQuizAttempt = async () => {
+    const initQuizAttempt = async () => {
       try {
         const quizId = Array.isArray(params.quizId)
           ? params.quizId[0]
           : params.quizId
 
-        console.log('Raw quiz ID:', quizId)
+        console.log('Quiz ID:', quizId)
 
-        // Try to format the quiz ID as a UUID if it's not already
-        let formattedQuizId = quizId
-        if (
-          !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-            quizId
-          )
-        ) {
-          // If it's a simple string of correct length, try to format it
-          const cleanId = quizId.replace(/-/g, '')
-          if (cleanId.length === 32) {
-            formattedQuizId = `${cleanId.slice(0, 8)}-${cleanId.slice(
-              8,
-              12
-            )}-${cleanId.slice(12, 16)}-${cleanId.slice(
-              16,
-              20
-            )}-${cleanId.slice(20)}`
-          }
-        }
+        // Fetch the quiz details to get the number of questions
+        const quizUrl = `${QUIZ_API_URL}/${quizId}`
+        console.log('Fetching quiz details from:', quizUrl)
 
-        console.log('Formatted quiz ID:', formattedQuizId)
-
-        // Validate the formatted quiz ID
-        if (
-          !formattedQuizId ||
-          !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-            formattedQuizId
-          )
-        ) {
-          console.error('Invalid quiz ID format:', formattedQuizId)
-          throw new Error('Invalid quiz ID format')
-        }
-
-        const requestBody = {
-          userId: '00000000-0000-0000-0000-000000000001', // Test UUID
-          quizId: formattedQuizId,
-          totalQuestions: 10,
-        }
-        console.log('Request body:', requestBody)
-        console.log('Request URL:', `${STUDY_API_URL}/attempts`)
-
-        const response = await fetch(`${STUDY_API_URL}/attempts`, {
-          method: 'POST',
+        const quizResponse = await fetch(quizUrl, {
           headers: {
-            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Origin: window.location.origin,
           },
-          body: JSON.stringify(requestBody),
           credentials: 'include',
         })
 
-        console.log('Response status:', response.status)
-        console.log(
-          'Response headers:',
-          Object.fromEntries(response.headers.entries())
-        )
-
-        if (!response.ok) {
-          const errorData = await response.json()
-          console.error('Start quiz error:', errorData)
-          throw new Error(errorData.error || 'Failed to start quiz attempt')
+        console.log('Quiz response status:', quizResponse.status)
+        if (!quizResponse.ok) {
+          const errorData = await quizResponse.json().catch(() => ({}))
+          console.error('Quiz fetch error:', errorData)
+          throw new Error(errorData.error || 'Failed to fetch quiz details')
         }
 
-        const data = await response.json()
-        console.log('Start quiz response:', data)
-        if (!data.data) {
-          throw new Error('Invalid response format')
+        const quizData = await quizResponse.json()
+        console.log('Quiz data:', quizData)
+
+        if (!quizData.data || !quizData.data.questions) {
+          console.error('Invalid quiz data format:', quizData)
+          throw new Error('Invalid quiz data format')
         }
 
-        setAttempt(data.data)
-        await loadQuestion(data.data.id, 0)
+        const totalQuestions = quizData.data.questions.length
+        console.log('Total questions:', totalQuestions)
+
+        // Start the quiz attempt using the hook
+        const newAttempt = await startAttempt(quizId, totalQuestions)
+        console.log('Quiz attempt started:', newAttempt)
+
+        // Ensure the attempt has all required fields
+        if (!newAttempt) {
+          console.error('Invalid attempt data:', newAttempt)
+          throw new Error('Invalid attempt data: missing required fields')
+        }
+
+        setAttempt(newAttempt)
+        setCurrentQuestionIndex(0)
+        await loadQuestion(newAttempt.id, 0)
       } catch (err) {
         console.error('Start quiz error:', err)
         setError(err instanceof Error ? err.message : 'Failed to start quiz')
@@ -118,69 +84,57 @@ export default function QuizAttemptPage() {
       }
     }
 
-    startQuizAttempt()
-  }, [params.quizId])
+    initQuizAttempt()
+  }, [params.quizId, startAttempt])
 
   const loadQuestion = async (attemptId: string, questionIndex: number) => {
     try {
-      const response = await fetch(
-        `${STUDY_API_URL}/attempts/${attemptId}/questions`
-      )
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to load question')
-      }
-      const data = await response.json()
-      if (!data.data || !Array.isArray(data.data)) {
-        throw new Error('Invalid question data format')
-      }
-      // Get the question at the current index
-      const questions = data.data
+      console.log('Loading questions for attempt:', attemptId)
+      const questions = await getQuestions(attemptId)
+      console.log('Questions loaded:', questions)
+
       if (!questions[questionIndex]) {
         throw new Error('Question not found')
       }
+
       setCurrentQuestion(questions[questionIndex])
     } catch (err) {
+      console.error('Load question error:', err)
       setError(err instanceof Error ? err.message : 'Failed to load question')
     }
   }
 
   const handleAnswerSubmit = async () => {
-    if (!attempt || !currentQuestion) return
+    if (!attempt || !currentQuestion || !selectedAnswer) {
+      setError('Please select an answer before submitting')
+      return
+    }
 
     try {
-      const response = await fetch(
-        `${STUDY_API_URL}/attempts/${attempt.id}/answers`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            questionId: currentQuestion.id,
-            answer: selectedAnswer,
-            isCorrect: currentQuestion.options[0] === selectedAnswer, // TODO: Replace with actual answer validation
-          }),
-        }
-      )
+      console.log('Submitting answer:', {
+        attemptId: attempt.id,
+        questionId: currentQuestion.id,
+        answer: selectedAnswer,
+      })
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to submit answer')
-      }
+      await submitAnswer(attempt.id, currentQuestion.id, selectedAnswer)
 
-      if (attempt.currentQuestionIndex + 1 >= attempt.totalQuestions) {
+      // Check if this was the last question
+      const isLastQuestion = currentQuestionIndex + 1 >= attempt.totalQuestions
+
+      if (isLastQuestion) {
         await completeAttempt()
       } else {
-        const newAttempt = {
-          ...attempt,
-          currentQuestionIndex: attempt.currentQuestionIndex + 1,
-        }
-        setAttempt(newAttempt)
-        await loadQuestion(attempt.id, newAttempt.currentQuestionIndex)
+        // Update attempt with next question index
+        const nextQuestionIndex = currentQuestionIndex + 1
+        setCurrentQuestionIndex(nextQuestionIndex)
+
+        // Load the next question
+        await loadQuestion(attempt.id, nextQuestionIndex)
         setSelectedAnswer('')
       }
     } catch (err) {
+      console.error('Submit answer error:', err)
       setError(err instanceof Error ? err.message : 'Failed to submit answer')
     }
   }
@@ -189,20 +143,12 @@ export default function QuizAttemptPage() {
     if (!attempt) return
 
     try {
-      const response = await fetch(
-        `${STUDY_API_URL}/attempts/${attempt.id}/complete`,
-        {
-          method: 'POST',
-        }
-      )
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to complete attempt')
-      }
-
+      console.log('Completing attempt:', attempt.id)
+      const completedAttempt = await finishAttempt(attempt.id)
+      console.log('Attempt completed:', completedAttempt)
       router.push(`/quiz-result/${attempt.id}`)
     } catch (err) {
+      console.error('Complete attempt error:', err)
       setError(
         err instanceof Error ? err.message : 'Failed to complete attempt'
       )
@@ -211,22 +157,40 @@ export default function QuizAttemptPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="border-primary mx-auto h-12 w-12 animate-spin rounded-full border-4 border-t-transparent"></div>
+          <h2 className="mt-4 text-lg font-medium text-gray-900">
+            Loading quiz...
+          </h2>
+        </div>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="m-4">
-        <div className="rounded-md bg-red-50 p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <XMarkIcon className="h-5 w-5 text-red-400" aria-hidden="true" />
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">{error}</h3>
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="mx-auto w-full max-w-md p-6">
+          <div className="rounded-md bg-red-50 p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <XMarkIcon
+                  className="h-5 w-5 text-red-400"
+                  aria-hidden="true"
+                />
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">{error}</h3>
+                <div className="mt-4">
+                  <button
+                    onClick={() => router.push('/explore')}
+                    className="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-sm font-medium text-red-800 hover:bg-red-100"
+                  >
+                    Back to Explore
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -236,13 +200,23 @@ export default function QuizAttemptPage() {
 
   if (!attempt || !currentQuestion) {
     return (
-      <div className="m-4">
-        <div className="rounded-md bg-red-50 p-4">
-          <div className="flex">
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">
-                Failed to load quiz
-              </h3>
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="mx-auto w-full max-w-md p-6">
+          <div className="rounded-md bg-yellow-50 p-4">
+            <div className="flex">
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-yellow-800">
+                  No quiz attempt in progress
+                </h3>
+                <div className="mt-4">
+                  <button
+                    onClick={() => router.push('/explore')}
+                    className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-sm font-medium text-yellow-800 hover:bg-yellow-100"
+                  >
+                    Back to Explore
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -251,76 +225,71 @@ export default function QuizAttemptPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl p-4">
-      <div className="overflow-hidden rounded-lg bg-white shadow">
-        <div className="p-6">
-          <div className="mb-6 flex items-center justify-between">
-            <h2 className="text-2xl font-bold">
-              Question {attempt.currentQuestionIndex + 1} of{' '}
-              {attempt.totalQuestions}
-            </h2>
-            <div className="text-sm text-gray-500">
-              Progress:{' '}
-              {Math.round(
-                (attempt.currentQuestionIndex / attempt.totalQuestions) * 100
-              )}
-              %
-            </div>
-          </div>
+    <div className="mx-auto max-w-3xl px-4 py-8">
+      {/* Progress bar */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between text-sm text-gray-600">
+          <span>
+            Question {currentQuestionIndex + 1} of {attempt.totalQuestions}
+          </span>
+          <span>
+            {Math.round((currentQuestionIndex / attempt.totalQuestions) * 100)}%
+            Complete
+          </span>
+        </div>
+        <div className="mt-2 h-2 w-full rounded-full bg-gray-200">
+          <div
+            className="bg-primary h-2 rounded-full transition-all duration-300"
+            style={{
+              width: `${(currentQuestionIndex / attempt.totalQuestions) * 100}%`,
+            }}
+          />
+        </div>
+      </div>
 
-          <div className="mb-8">
-            <div className="h-2 w-full rounded-full bg-gray-200">
-              <div
-                className="h-2 rounded-full bg-primary transition-all duration-300"
-                style={{
-                  width: `${(attempt.currentQuestionIndex / attempt.totalQuestions) * 100}%`,
-                }}
-              ></div>
-            </div>
-          </div>
+      {/* Question */}
+      <div className="rounded-lg bg-white p-6 shadow-sm">
+        <h2 className="text-xl font-semibold text-gray-900">
+          {currentQuestion.text}
+        </h2>
 
-          <p className="mb-8 text-lg">{currentQuestion.text}</p>
-
-          <div className="space-y-4">
-            {currentQuestion.options.map((option, index) => (
+        {/* Options */}
+        <div className="mt-6 space-y-4">
+          {currentQuestion.options.map((option) => (
+            <div key={option} className="flex items-center">
+              <input
+                id={option}
+                name="answer"
+                type="radio"
+                value={option}
+                checked={selectedAnswer === option}
+                onChange={(e) => setSelectedAnswer(e.target.value)}
+                className="text-primary focus:ring-primary h-4 w-4 border-gray-300"
+              />
               <label
-                key={index}
-                className={clsx(
-                  'flex cursor-pointer items-center rounded-lg border p-4 hover:bg-gray-50',
-                  selectedAnswer === option
-                    ? 'border-primary bg-primary/5'
-                    : 'border-gray-200'
-                )}
+                htmlFor={option}
+                className="ml-3 block text-sm font-medium text-gray-700"
               >
-                <input
-                  type="radio"
-                  name="answer"
-                  value={option}
-                  checked={selectedAnswer === option}
-                  onChange={(e) => setSelectedAnswer(e.target.value)}
-                  className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
-                />
-                <span className="ml-3 block text-sm font-medium">{option}</span>
+                {option}
               </label>
-            ))}
-          </div>
+            </div>
+          ))}
+        </div>
 
-          <div className="mt-8">
-            <button
-              onClick={handleAnswerSubmit}
-              disabled={!selectedAnswer}
-              className={clsx(
-                'rounded-md px-4 py-2 text-sm font-semibold text-white shadow-sm',
-                selectedAnswer
-                  ? 'bg-primary hover:bg-primary/90'
-                  : 'cursor-not-allowed bg-gray-300'
-              )}
-            >
-              {attempt.currentQuestionIndex + 1 === attempt.totalQuestions
-                ? 'Submit Quiz'
-                : 'Next Question'}
-            </button>
-          </div>
+        {/* Submit button */}
+        <div className="mt-8">
+          <button
+            onClick={handleAnswerSubmit}
+            disabled={!selectedAnswer}
+            className={clsx(
+              'w-full rounded-md px-4 py-2 text-sm font-semibold text-white shadow-sm',
+              selectedAnswer
+                ? 'bg-primary hover:bg-primary/90'
+                : 'cursor-not-allowed bg-gray-300'
+            )}
+          >
+            Submit Answer
+          </button>
         </div>
       </div>
     </div>
