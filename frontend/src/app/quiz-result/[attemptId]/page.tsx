@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { XMarkIcon, CheckIcon } from '@heroicons/react/24/outline'
 import clsx from 'clsx'
+import { STUDY_API_URL } from '@/config/constants'
 
 interface QuizAttempt {
   id: string
@@ -41,7 +42,7 @@ export default function QuizResultPage() {
     const loadQuizResult = async () => {
       try {
         const response = await fetch(
-          `http://localhost:8083/attempts/${params.attemptId}`
+          `${STUDY_API_URL}/attempts/${params.attemptId}`
         )
         if (!response.ok) {
           throw new Error('Failed to load quiz result')
@@ -51,7 +52,7 @@ export default function QuizResultPage() {
 
         // Load answers
         const answersResponse = await fetch(
-          `http://localhost:8083/attempts/${params.attemptId}/answers`
+          `${STUDY_API_URL}/attempts/${params.attemptId}/answers`
         )
         if (!answersResponse.ok) {
           throw new Error('Failed to load answers')
@@ -73,7 +74,7 @@ export default function QuizResultPage() {
   if (loading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+        <div className="border-primary h-8 w-8 animate-spin rounded-full border-4 border-t-transparent"></div>
       </div>
     )
   }
@@ -202,7 +203,7 @@ export default function QuizResultPage() {
         </button>
         <button
           onClick={() => router.push('/quizzes')}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary/90"
+          className="bg-primary hover:bg-primary/90 rounded-md px-4 py-2 text-sm font-semibold text-white shadow-sm"
         >
           Try Another Quiz
         </button>

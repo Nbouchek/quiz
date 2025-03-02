@@ -1,50 +1,85 @@
 const express = require("express");
 const { createProxyMiddleware } = require("http-proxy-middleware");
 const bodyParser = require("body-parser");
+const cors = require("cors");
+const fetch = require("node-fetch");
 
 const router = express.Router();
+
+// Configure CORS
+router.use(
+  cors({
+    origin: "http://localhost:3000", // Only allow the frontend origin
+    credentials: true, // Enable credentials (cookies, auth headers)
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Origin",
+      "Content-Type",
+      "Accept",
+      "Authorization",
+      "X-Requested-With",
+      "Content-Length",
+      "Accept-Encoding",
+      "X-CSRF-Token",
+      "Cache-Control",
+    ],
+    exposedHeaders: ["Content-Length", "Content-Type"],
+    maxAge: 43200, // 12 hours
+  })
+);
 
 // Parse JSON bodies
 router.use(bodyParser.json());
 
-// Study Service Proxy
-const studyServiceProxy = createProxyMiddleware({
-  target: "http://study-service:8084",
-  pathRewrite: {
-    "^/study/attempts/?$": "/attempts",
-    "^/study/attempts/(.*)": "/attempts/$1",
-    "^/study": "/",
-  },
-  changeOrigin: true,
-  onProxyReq: (proxyReq, req, res) => {
-    console.log(`[Study Service Proxy] Original URL: ${req.url}`);
-    console.log(`[Study Service Proxy] Method: ${req.method}`);
-    console.log(`[Study Service Proxy] Headers:`, req.headers);
-    console.log(`[Study Service Proxy] Rewritten URL: ${proxyReq.path}`);
+// Add logging middleware for debug
+router.use((req, res, next) => {
+  console.log(`[API Gateway] ${req.method} ${req.url}`);
+  console.log(`[API Gateway] Headers:`, req.headers);
+  if (req.body && Object.keys(req.body).length > 0) {
+    console.log(`[API Gateway] Body:`, req.body);
+  }
+  next();
+});
 
-    // Handle POST/PUT requests with a body
-    if (req.body && (req.method === "POST" || req.method === "PUT")) {
-      console.log(`[Study Service Proxy] Request Body:`, req.body);
-      const bodyData = JSON.stringify(req.body);
-      proxyReq.setHeader("Content-Length", Buffer.byteLength(bodyData));
-      proxyReq.write(bodyData);
-      proxyReq.end();
-    }
-  },
-  onProxyRes: (proxyRes, req, res) => {
-    console.log(
-      `[Study Service Proxy] Response Status: ${proxyRes.statusCode}`
-    );
-    console.log(`[Study Service Proxy] Response Headers:`, proxyRes.headers);
-  },
-  onError: (err, req, res) => {
-    console.error(`[Study Service Proxy] Error:`, err);
+// Special handler for quiz attempt endpoint
+// Must be defined BEFORE proxy middleware
+router.post("/quiz/:quizId/attempt", async (req, res) => {
+  console.log(
+    `[Quiz Attempt Handler] Handling POST /quiz/${req.params.quizId}/attempt`
+  );
+
+  // Create the modified request body
+  const requestBody = {
+    ...req.body,
+    quizId: req.params.quizId,
+  };
+
+  console.log(`[Quiz Attempt Handler] Modified request body:`, requestBody);
+
+  try {
+    // Forward the request to the study service
+    const response = await fetch("http://study-service:8084/attempts", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    console.log(`[Quiz Attempt Handler] Status: ${response.status}`);
+
+    const data = await response.json();
+    console.log(`[Quiz Attempt Handler] Response:`, data);
+
+    res.status(response.status).json(data);
+  } catch (error) {
+    console.error(`[Quiz Attempt Handler] Error:`, error);
     res.status(500).json({
       success: false,
-      error: "Study service proxy error",
-      details: err.message,
+      error: "Error forwarding request to study service",
+      details: error.message,
     });
-  },
+  }
 });
 
 // Content Service Proxy
@@ -52,7 +87,6 @@ const contentServiceProxy = createProxyMiddleware({
   target: "http://content-service:8081",
   pathRewrite: {
     "^/content/quizzes/?$": "/quizzes/",
-    "^/content/quizzes/([^/]+)/attempt/?$": "/quizzes/$1/attempt",
     "^/content/quizzes/(.*)": "/quizzes/$1",
     "^/content": "/",
   },
@@ -60,21 +94,11 @@ const contentServiceProxy = createProxyMiddleware({
   followRedirects: true,
   autoRewrite: true,
   onProxyReq: (proxyReq, req, res) => {
-    console.log(`[Content Service Proxy] Original URL: ${req.url}`);
-    console.log(`[Content Service Proxy] Method: ${req.method}`);
-    console.log(`[Content Service Proxy] Headers:`, req.headers);
-    console.log(`[Content Service Proxy] Rewritten URL: ${proxyReq.path}`);
-
-    // Log request body for POST/PUT requests
     if (req.body && (req.method === "POST" || req.method === "PUT")) {
-      console.log(`[Content Service Proxy] Request Body:`, req.body);
+      const bodyData = JSON.stringify(req.body);
+      proxyReq.setHeader("Content-Length", Buffer.byteLength(bodyData));
+      proxyReq.write(bodyData);
     }
-  },
-  onProxyRes: (proxyRes, req, res) => {
-    console.log(
-      `[Content Service Proxy] Response Status: ${proxyRes.statusCode}`
-    );
-    console.log(`[Content Service Proxy] Response Headers:`, proxyRes.headers);
   },
   onError: (err, req, res) => {
     console.error(`[Content Service Proxy] Error:`, err);
@@ -84,6 +108,44 @@ const contentServiceProxy = createProxyMiddleware({
   },
 });
 
+// Study Service Proxy (excluding /quiz/:quizId/attempt)
+const studyServiceProxy = createProxyMiddleware(
+  (pathname) => {
+    // Skip our custom route
+    return (
+      pathname.startsWith("/study") &&
+      !pathname.match(/^\/quiz\/[^\/]+\/attempt\/?$/)
+    );
+  },
+  {
+    target: "http://study-service:8084",
+    pathRewrite: {
+      "^/study/quiz-attempts/?$": "/attempts",
+      "^/study/quiz-attempts/(.*)": "/attempts/$1",
+      "^/study/attempts/?$": "/attempts",
+      "^/study/attempts/(.*)": "/attempts/$1",
+      "^/study": "/",
+    },
+    changeOrigin: true,
+    onProxyReq: (proxyReq, req, res) => {
+      console.log(`[Study Service Proxy] Forwarding to: ${proxyReq.path}`);
+      if (req.body && (req.method === "POST" || req.method === "PUT")) {
+        const bodyData = JSON.stringify(req.body);
+        proxyReq.setHeader("Content-Length", Buffer.byteLength(bodyData));
+        proxyReq.write(bodyData);
+      }
+    },
+    onError: (err, req, res) => {
+      console.error(`[Study Service Proxy] Error:`, err);
+      res.status(500).json({
+        success: false,
+        error: "Study service proxy error",
+        details: err.message,
+      });
+    },
+  }
+);
+
 // User Service Proxy
 const userServiceProxy = createProxyMiddleware({
   target: "http://user-service:8080",
@@ -91,6 +153,14 @@ const userServiceProxy = createProxyMiddleware({
     "^/users": "/",
   },
   changeOrigin: true,
+  onError: (err, req, res) => {
+    console.error(`[User Service Proxy] Error:`, err);
+    res.status(500).json({
+      success: false,
+      error: "User service proxy error",
+      details: err.message,
+    });
+  },
 });
 
 // AI Service Proxy
@@ -100,11 +170,19 @@ const aiServiceProxy = createProxyMiddleware({
     "^/ai": "/",
   },
   changeOrigin: true,
+  onError: (err, req, res) => {
+    console.error(`[AI Service Proxy] Error:`, err);
+    res.status(500).json({
+      success: false,
+      error: "AI service proxy error",
+      details: err.message,
+    });
+  },
 });
 
-// Routes
-router.use("/study", studyServiceProxy);
+// Routes - order matters
 router.use("/content", contentServiceProxy);
+router.use("/study", studyServiceProxy);
 router.use("/users", userServiceProxy);
 router.use("/ai", aiServiceProxy);
 

@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/QuizApp/QuizApp/services/ai-service/src/pkg/config"
-	"github.com/QuizApp/QuizApp/services/ai-service/src/pkg/metrics"
-	"github.com/QuizApp/QuizApp/services/ai-service/src/pkg/models"
-	"github.com/QuizApp/QuizApp/services/ai-service/src/pkg/ratelimit"
-	"github.com/QuizApp/QuizApp/services/ai-service/src/pkg/repository"
+	"QuizApp/services/ai-service/src/pkg/config"
+	"QuizApp/services/ai-service/src/pkg/metrics"
+	"QuizApp/services/ai-service/src/pkg/models"
+	"QuizApp/services/ai-service/src/pkg/ratelimit"
+	"QuizApp/services/ai-service/src/pkg/repository"
 	"github.com/google/uuid"
 )
 

@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/QuizApp/QuizApp/services/ai-service/src/pkg/api"
-	"github.com/QuizApp/QuizApp/services/ai-service/src/pkg/models"
-	"github.com/QuizApp/QuizApp/services/ai-service/src/pkg/testutil"
+	"QuizApp/services/ai-service/src/pkg/api"
+	"QuizApp/services/ai-service/src/pkg/models"
+	"QuizApp/services/ai-service/src/pkg/testutil"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

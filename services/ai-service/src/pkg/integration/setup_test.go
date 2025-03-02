@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/QuizApp/QuizApp/services/ai-service/src/pkg/config"
-	"github.com/QuizApp/QuizApp/services/ai-service/src/pkg/handlers"
-	"github.com/QuizApp/QuizApp/services/ai-service/src/pkg/repository"
-	"github.com/QuizApp/QuizApp/services/ai-service/src/pkg/service"
-	"github.com/QuizApp/QuizApp/services/ai-service/src/pkg/testutil"
+	"QuizApp/services/ai-service/src/pkg/config"
+	"QuizApp/services/ai-service/src/pkg/handlers"
+	"QuizApp/services/ai-service/src/pkg/repository"
+	"QuizApp/services/ai-service/src/pkg/service"
+	"QuizApp/services/ai-service/src/pkg/testutil"
 	"github.com/gorilla/mux"
 	"go.uber.org/zap"
 )

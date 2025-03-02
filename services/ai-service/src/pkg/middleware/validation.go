@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/QuizApp/QuizApp/services/ai-service/src/pkg/api"
+	"QuizApp/services/ai-service/src/pkg/api"
 	"github.com/go-playground/validator/v10"
 	"go.uber.org/zap"
 )

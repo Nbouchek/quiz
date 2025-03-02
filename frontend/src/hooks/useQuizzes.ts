@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import type { Quiz, ApiResponse } from '@/types'
-import { API_BASE_URL } from '@/config/constants'
+import { API_BASE_URL, QUIZ_API_URL } from '@/config/constants'
 
 export function useQuizzes() {
   const queryClient = useQueryClient()
@@ -14,38 +14,26 @@ export function useQuizzes() {
   } = useQuery<Quiz[], Error>({
     queryKey: ['quizzes'],
     queryFn: async () => {
-      const url = `${API_BASE_URL}/content/quizzes/`
+      const url = `${QUIZ_API_URL}/quizzes/`
       console.log('Fetching quizzes from:', url)
       try {
-        // First, send a preflight request
-        try {
-          await axios.options(url, {
-            headers: {
-              'Access-Control-Request-Method': 'GET',
-              'Access-Control-Request-Headers': 'content-type',
-              Origin: 'http://localhost:3000',
-            },
-          })
-        } catch (preflightError) {
-          console.warn('Preflight request failed:', preflightError)
-          // Continue anyway as the actual request might still work
-        }
-
         // Create axios instance with default config
         const axiosInstance = axios.create({
           baseURL: API_BASE_URL,
           timeout: 10000,
           withCredentials: true,
           headers: {
+            // Note: Do not set 'Origin' header here as browsers manage this automatically
+            // and attempts to set it manually will be ignored with a console warning
             Accept: 'application/json',
             'Content-Type': 'application/json',
-            Origin: 'http://localhost:3000',
           },
         })
 
         // Add request interceptor for debugging
         axiosInstance.interceptors.request.use(
           (config) => {
+            // Note: We avoid modifying headers like 'Origin' which are protected by browsers
             console.log('Request config:', {
               url: config.url,
               method: config.method,
@@ -93,8 +81,9 @@ export function useQuizzes() {
           }
         )
 
-        const response =
-          await axiosInstance.get<ApiResponse<Quiz[]>>('/content/quizzes/')
+        const response = await axios.get<ApiResponse<Quiz[]>>(
+          `${QUIZ_API_URL}/quizzes/`
+        )
 
         if (!response.data) {
           console.error('No data in response')

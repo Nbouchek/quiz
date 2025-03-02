@@ -16,7 +16,7 @@ RUN go mod download
 COPY . .
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -o main ./src/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o main ./src
 
 # Final stage
 FROM alpine:latest
@@ -28,6 +28,12 @@ COPY --from=builder /app/main .
 
 # Copy environment file
 COPY --from=builder /app/.env.example .env
+
+# Create migrations directory
+RUN mkdir -p /app/migrations
+
+# Copy migrations
+COPY --from=builder /app/migrations /app/migrations
 
 # Expose port
 EXPOSE 8084

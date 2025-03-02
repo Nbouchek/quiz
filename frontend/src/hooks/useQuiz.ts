@@ -25,7 +25,7 @@ export function useQuiz(quizId?: string, options: UseQuizOptions = {}) {
       if (!quizId) throw new Error('Quiz ID is required')
       console.log('Fetching quiz:', quizId)
 
-      const url = `${API_BASE_URL}/content/quizzes/${quizId}`
+      const url = `${QUIZ_API_URL}/quizzes/${quizId}`
       console.log('Fetching quiz from:', url)
 
       try {
@@ -35,15 +35,17 @@ export function useQuiz(quizId?: string, options: UseQuizOptions = {}) {
           timeout: 10000,
           withCredentials: true,
           headers: {
+            // Note: Do not set 'Origin' header here as browsers manage this automatically
+            // and attempts to set it manually will be ignored with a console warning
             Accept: 'application/json',
             'Content-Type': 'application/json',
-            Origin: 'http://localhost:3000',
           },
         })
 
         // Add request interceptor for debugging
         axiosInstance.interceptors.request.use(
           (config) => {
+            // Note: We avoid modifying headers like 'Origin' which are protected by browsers
             console.log('Request config:', {
               url: config.url,
               method: config.method,
@@ -91,8 +93,8 @@ export function useQuiz(quizId?: string, options: UseQuizOptions = {}) {
           }
         )
 
-        const response = await axiosInstance.get<ApiResponse<Quiz>>(
-          `/content/quizzes/${quizId}`
+        const response = await axios.get<ApiResponse<Quiz>>(
+          `${QUIZ_API_URL}/quizzes/${quizId}`
         )
         console.log('Raw API Response:', JSON.stringify(response.data, null, 2))
 
@@ -184,13 +186,16 @@ export function useQuiz(quizId?: string, options: UseQuizOptions = {}) {
   const createQuiz = useMutation<Quiz, AxiosError, CreateQuizInput>({
     mutationFn: async (input) => {
       console.log('Creating quiz with input:', JSON.stringify(input, null, 2))
-      const response = await axios.post<ApiResponse<Quiz>>(QUIZ_API_URL, {
-        ...input,
-        questions: input.questions.map((q) => ({
-          ...q,
-          type: q.type || 'multiple_choice',
-        })),
-      })
+      const response = await axios.post<ApiResponse<Quiz>>(
+        `${QUIZ_API_URL}/quizzes/`,
+        {
+          ...input,
+          questions: input.questions.map((q) => ({
+            ...q,
+            type: q.type || 'multiple_choice',
+          })),
+        }
+      )
       console.log(
         'Create quiz response:',
         JSON.stringify(response.data, null, 2)
@@ -215,7 +220,7 @@ export function useQuiz(quizId?: string, options: UseQuizOptions = {}) {
       if (!quizId) throw new Error('Quiz ID is required')
       console.log('Updating quiz with input:', JSON.stringify(input, null, 2))
       const response = await axios.patch<ApiResponse<Quiz>>(
-        `${API_BASE_URL}/${quizId}`,
+        `${QUIZ_API_URL}/quizzes/${quizId}`,
         {
           ...input,
           questions: input.questions?.map((q) => ({
@@ -242,7 +247,7 @@ export function useQuiz(quizId?: string, options: UseQuizOptions = {}) {
   const deleteQuiz = useMutation<void, AxiosError, void>({
     mutationFn: async () => {
       if (!quizId) throw new Error('Quiz ID is required')
-      await axios.delete(`${API_BASE_URL}/${quizId}`)
+      await axios.delete(`${QUIZ_API_URL}/quizzes/${quizId}`)
     },
     onSuccess: () => {
       queryClient.removeQueries({ queryKey: ['quiz', quizId] })

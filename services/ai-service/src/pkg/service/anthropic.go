@@ -10,9 +10,9 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/QuizApp/QuizApp/services/ai-service/src/pkg/config"
-	"github.com/QuizApp/QuizApp/services/ai-service/src/pkg/metrics"
-	"github.com/QuizApp/QuizApp/services/ai-service/src/pkg/models"
+	"QuizApp/services/ai-service/src/pkg/config"
+	"QuizApp/services/ai-service/src/pkg/metrics"
+	"QuizApp/services/ai-service/src/pkg/models"
 )
 
 const (

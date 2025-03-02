@@ -1,4 +1,4 @@
-module github.com/QuizApp/QuizApp/services/ai-service
+module QuizApp/services/ai-service
 
 go 1.21
 

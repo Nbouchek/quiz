@@ -1,10 +1,8 @@
-go 1.21.0
-
-toolchain go1.23.4
+go 1.21
 
 use (
-	./services/ai-service
 	./services/content-service
-	./services/study-service
 	./services/user-service
+	./services/study-service
+	./services/ai-service
 )

@@ -29,6 +29,11 @@ const QuizQuestion: React.FC<QuizQuestionProps> = ({
 
   const handleSubmit = () => {
     if (selectedAnswer) {
+      console.log('QuizQuestion - submitting answer for question:', {
+        questionId: question.id,
+        questionIdType: typeof question.id,
+        answer: selectedAnswer,
+      })
       onSubmit(question.id, selectedAnswer)
       setSelectedAnswer('')
     }
@@ -39,13 +44,20 @@ const QuizQuestion: React.FC<QuizQuestionProps> = ({
       {/* Progress indicator */}
       <div className="mb-8">
         <div className="flex items-center justify-between text-sm font-medium text-gray-600">
-          <span>Question {currentQuestionNumber} of {totalQuestions}</span>
-          <span className="text-indigo-600">{Math.round((currentQuestionNumber / totalQuestions) * 100)}% Complete</span>
+          <span>
+            Question {currentQuestionNumber} of {totalQuestions}
+          </span>
+          <span className="text-indigo-600">
+            {Math.round((currentQuestionNumber / totalQuestions) * 100)}%
+            Complete
+          </span>
         </div>
         <div className="mt-2 h-2 w-full rounded-full bg-gray-200">
           <div
             className="h-2 rounded-full bg-indigo-600 transition-all duration-300 ease-in-out"
-            style={{ width: `${(currentQuestionNumber / totalQuestions) * 100}%` }}
+            style={{
+              width: `${(currentQuestionNumber / totalQuestions) * 100}%`,
+            }}
           />
         </div>
       </div>
@@ -57,7 +69,11 @@ const QuizQuestion: React.FC<QuizQuestionProps> = ({
 
       {/* Options */}
       <div className="space-y-4">
-        <RadioGroup value={selectedAnswer} onChange={setSelectedAnswer} disabled={isSubmitting}>
+        <RadioGroup
+          value={selectedAnswer}
+          onChange={setSelectedAnswer}
+          disabled={isSubmitting}
+        >
           <div className="space-y-3">
             {question.options.map((option, index) => (
               <RadioGroup.Option
@@ -70,7 +86,7 @@ const QuizQuestion: React.FC<QuizQuestionProps> = ({
                     checked
                       ? 'bg-indigo-600 text-white'
                       : 'bg-white hover:bg-gray-50',
-                    isSubmitting && 'opacity-50 cursor-not-allowed'
+                    isSubmitting && 'cursor-not-allowed opacity-50'
                   )
                 }
               >
@@ -112,7 +128,7 @@ const QuizQuestion: React.FC<QuizQuestionProps> = ({
           className={cn(
             'rounded-md px-6 py-2.5 text-sm font-semibold text-white shadow-sm',
             !selectedAnswer || isSubmitting
-              ? 'bg-gray-300 cursor-not-allowed'
+              ? 'cursor-not-allowed bg-gray-300'
               : 'bg-indigo-600 hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600'
           )}
         >

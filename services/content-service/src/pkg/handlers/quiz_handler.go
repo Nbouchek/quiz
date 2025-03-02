@@ -5,10 +5,11 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/QuizApp/content-service/src/pkg/models"
-	"github.com/QuizApp/content-service/src/pkg/repository"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+
+	"QuizApp/services/content-service/src/pkg/models"
+	"QuizApp/services/content-service/src/pkg/repository"
 )
 
 // QuizHandler handles HTTP requests for quiz operations
@@ -81,18 +82,20 @@ func (h *QuizHandler) CreateQuiz(c *gin.Context) {
 	if input.TopicID != nil {
 		log.Printf("TopicID: %s", *input.TopicID)
 	} else {
-		log.Printf("No topic ID provided")
+		log.Printf("No topic ID provided, using default topic")
 	}
 	log.Printf("Questions: %+v", input.Questions)
 
 	// Use a default user ID for now
 	defaultUserID := uuid.MustParse("00000000-0000-0000-0000-000000000001")
+	defaultTopicID := uuid.MustParse("00000000-0000-0000-0000-000000000001")
 
 	quiz := &models.Quiz{
 		ID:          uuid.New(),
 		Title:       input.Title,
 		Description: input.Description,
 		CreatorID:   defaultUserID,
+		TopicID:     &defaultTopicID,
 	}
 	
 	if input.TopicID != nil {
@@ -124,10 +127,9 @@ func (h *QuizHandler) CreateQuiz(c *gin.Context) {
 	// Add questions to the quiz object for the response
 	quiz.Questions = questions
 
-	log.Printf("Successfully created quiz with ID: %s and %d questions", quiz.ID, len(questions))
 	c.JSON(http.StatusCreated, gin.H{
-		"data": quiz,
 		"success": true,
+		"data": quiz,
 	})
 }
 

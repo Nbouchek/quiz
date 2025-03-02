@@ -38,8 +38,8 @@ type Quiz struct {
 	Title       string       `json:"title"`
 	Description string       `json:"description"`
 	TopicID     *uuid.UUID   `json:"topicId,omitempty"`
-	CreatorID   uuid.UUID   `json:"creatorId"`
-	Questions   []*Question  `json:"questions"`
+	CreatorID   uuid.UUID    `json:"creatorId"`
+	Questions   []*Question  `json:"questions,omitempty"`
 	CreatedAt   time.Time    `json:"createdAt"`
 	UpdatedAt   time.Time    `json:"updatedAt"`
 }
@@ -62,31 +62,61 @@ type StudySet struct {
 	ID          uuid.UUID      `json:"id"`
 	Title       string         `json:"title"`
 	Description string         `json:"description,omitempty"`
-	OwnerID     uuid.UUID      `json:"owner_id"`
+	OwnerID     uuid.UUID      `json:"ownerId"`
 	Visibility  VisibilityType `json:"visibility"`
 	Tags        []string       `json:"tags,omitempty"`
-	CreatedAt   time.Time      `json:"created_at"`
-	UpdatedAt   time.Time      `json:"updated_at"`
+	CreatedAt   time.Time      `json:"createdAt"`
+	UpdatedAt   time.Time      `json:"updatedAt"`
 }
 
 // ContentItem represents a single piece of study content
 type ContentItem struct {
 	ID          uuid.UUID   `json:"id"`
-	StudySetID  uuid.UUID   `json:"study_set_id"`
-	ContentType ContentType `json:"content_type"`
+	StudySetID  uuid.UUID   `json:"studySetId"`
+	ContentType ContentType `json:"contentType"`
 	Question    string      `json:"question"`
 	Answer      string      `json:"answer"`
 	Hints       []string    `json:"hints,omitempty"`
-	CreatedAt   time.Time   `json:"created_at"`
-	UpdatedAt   time.Time   `json:"updated_at"`
+	CreatedAt   time.Time   `json:"createdAt"`
+	UpdatedAt   time.Time   `json:"updatedAt"`
 }
 
 // SharedAccess represents shared access to a study set
 type SharedAccess struct {
-	StudySetID uuid.UUID `json:"study_set_id"`
-	UserID     uuid.UUID `json:"user_id"`
-	AccessType string    `json:"access_type"`
-	CreatedAt  time.Time `json:"created_at"`
+	StudySetID uuid.UUID `json:"studySetId"`
+	UserID     uuid.UUID `json:"userId"`
+	AccessType string    `json:"accessType"`
+	CreatedAt  time.Time `json:"createdAt"`
+}
+
+// NewQuiz creates a new quiz
+func NewQuiz(title, description string, creatorID uuid.UUID, topicID *uuid.UUID) *Quiz {
+	now := time.Now().UTC()
+	return &Quiz{
+		ID:          uuid.New(),
+		Title:       title,
+		Description: description,
+		TopicID:     topicID,
+		CreatorID:   creatorID,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+}
+
+// NewQuestion creates a new question
+func NewQuestion(quizID uuid.UUID, text string, questionType QuestionType, options []string, correctAnswer, explanation string) *Question {
+	now := time.Now().UTC()
+	return &Question{
+		ID:            uuid.New(),
+		QuizID:        quizID,
+		Text:          text,
+		Type:          questionType,
+		Options:       options,
+		CorrectAnswer: correctAnswer,
+		Explanation:   explanation,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	}
 }
 
 // NewStudySet creates a new study set

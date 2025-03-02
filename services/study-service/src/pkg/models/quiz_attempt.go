@@ -15,23 +15,23 @@ const (
 	AttemptStatusAbandoned  AttemptStatus = "abandoned"
 )
 
-// QuizAttempt represents a user's attempt at a quiz
+// QuizAttempt represents a quiz attempt
 type QuizAttempt struct {
-	ID            uuid.UUID     `json:"id"`
-	UserID        uuid.UUID     `json:"userId"`
-	QuizID        uuid.UUID     `json:"quizId"`
-	Status        AttemptStatus `json:"status"`
-	Score         float64       `json:"score"`
-	StartedAt     time.Time     `json:"startedAt"`
-	CompletedAt   *time.Time    `json:"completedAt,omitempty"`
-	Answers       []Answer      `json:"answers,omitempty"`
-	TotalQuestions int          `json:"totalQuestions"`
-	CorrectAnswers int          `json:"correctAnswers"`
-	CreatedAt     time.Time     `json:"createdAt"`
-	UpdatedAt     time.Time     `json:"updatedAt"`
+	ID                  uuid.UUID     `json:"id"`
+	UserID             uuid.UUID     `json:"userId"`
+	QuizID             uuid.UUID     `json:"quizId"`
+	Status             AttemptStatus `json:"status"`
+	CurrentQuestionIndex int         `json:"currentQuestionIndex"`
+	TotalQuestions     int          `json:"totalQuestions"`
+	Score              float64       `json:"score"`
+	StartedAt          time.Time     `json:"startedAt"`
+	CompletedAt        *time.Time    `json:"completedAt,omitempty"`
+	CreatedAt          time.Time     `json:"createdAt"`
+	UpdatedAt          time.Time     `json:"updatedAt"`
+	Answers            []Answer      `json:"answers,omitempty"`
 }
 
-// Answer represents a user's answer to a quiz question
+// Answer represents an answer to a quiz question
 type Answer struct {
 	ID         uuid.UUID `json:"id"`
 	AttemptID  uuid.UUID `json:"attemptId"`
@@ -45,51 +45,59 @@ type Answer struct {
 func NewQuizAttempt(userID, quizID uuid.UUID, totalQuestions int) *QuizAttempt {
 	now := time.Now().UTC()
 	return &QuizAttempt{
-		ID:             uuid.New(),
-		UserID:         userID,
-		QuizID:         quizID,
-		Status:         AttemptStatusInProgress,
-		Score:          0,
-		StartedAt:      now,
-		TotalQuestions: totalQuestions,
-		CorrectAnswers: 0,
-		CreatedAt:      now,
-		UpdatedAt:      now,
+		ID:                  uuid.New(),
+		UserID:             userID,
+		QuizID:             quizID,
+		Status:             AttemptStatusInProgress,
+		CurrentQuestionIndex: 0,
+		TotalQuestions:     totalQuestions,
+		Score:              0,
+		StartedAt:          now,
+		CreatedAt:          now,
+		UpdatedAt:          now,
 	}
 }
 
-// Submit submits an answer for the quiz attempt
-func (qa *QuizAttempt) Submit(questionID uuid.UUID, answer string, isCorrect bool) Answer {
+// Submit adds an answer to the quiz attempt
+func (a *QuizAttempt) Submit(questionID uuid.UUID, answer string, isCorrect bool) Answer {
 	now := time.Now().UTC()
-	ans := Answer{
+	newAnswer := Answer{
 		ID:         uuid.New(),
-		AttemptID:  qa.ID,
+		AttemptID:  a.ID,
 		QuestionID: questionID,
 		Answer:     answer,
 		IsCorrect:  isCorrect,
 		CreatedAt:  now,
 	}
-	qa.Answers = append(qa.Answers, ans)
-	if isCorrect {
-		qa.CorrectAnswers++
+
+	a.Answers = append(a.Answers, newAnswer)
+	a.CurrentQuestionIndex++
+	a.UpdatedAt = now
+
+	// Update score
+	correctAnswers := 0
+	for _, ans := range a.Answers {
+		if ans.IsCorrect {
+			correctAnswers++
+		}
 	}
-	qa.UpdatedAt = now
-	return ans
+	a.Score = float64(correctAnswers) / float64(a.TotalQuestions) * 100
+
+	return newAnswer
 }
 
-// Complete completes the quiz attempt and calculates the final score
-func (qa *QuizAttempt) Complete() {
+// Complete marks the quiz attempt as completed
+func (a *QuizAttempt) Complete() {
 	now := time.Now().UTC()
-	qa.Status = AttemptStatusCompleted
-	qa.CompletedAt = &now
-	qa.Score = float64(qa.CorrectAnswers) / float64(qa.TotalQuestions) * 100
-	qa.UpdatedAt = now
+	a.Status = AttemptStatusCompleted
+	a.CompletedAt = &now
+	a.UpdatedAt = now
 }
 
-// Abandon abandons the quiz attempt
-func (qa *QuizAttempt) Abandon() {
+// Abandon marks the quiz attempt as abandoned
+func (a *QuizAttempt) Abandon() {
 	now := time.Now().UTC()
-	qa.Status = AttemptStatusAbandoned
-	qa.CompletedAt = &now
-	qa.UpdatedAt = now
+	a.Status = AttemptStatusAbandoned
+	a.CompletedAt = &now
+	a.UpdatedAt = now
 } 

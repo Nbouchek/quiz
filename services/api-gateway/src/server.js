@@ -10,6 +10,20 @@ app.use(
   cors({
     origin: "http://localhost:3000",
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Origin",
+      "Content-Type",
+      "Accept",
+      "Authorization",
+      "X-Requested-With",
+      "Content-Length",
+      "Accept-Encoding",
+      "X-CSRF-Token",
+      "Cache-Control",
+    ],
+    exposedHeaders: ["Content-Length", "Content-Type"],
+    maxAge: 43200, // 12 hours
   })
 );
 app.use(express.json());

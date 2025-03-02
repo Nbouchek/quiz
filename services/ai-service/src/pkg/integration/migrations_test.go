@@ -3,7 +3,7 @@ package integration
 import (
 	"testing"
 
-	"github.com/QuizApp/QuizApp/services/ai-service/src/pkg/testutil"
+	"QuizApp/services/ai-service/src/pkg/testutil"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"

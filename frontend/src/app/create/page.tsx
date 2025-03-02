@@ -62,6 +62,7 @@ export default function CreateQuizPage() {
       await createQuiz.mutateAsync({
         title: title.trim(),
         description: description.trim(),
+        topicId: '00000000-0000-0000-0000-000000000001',
         questions: questions.map((q) => ({
           text: q.text.trim(),
           type: q.type,

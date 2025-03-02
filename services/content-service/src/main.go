@@ -3,9 +3,11 @@ package main
 import (
 	"log"
 
-	"github.com/QuizApp/content-service/src/pkg/database"
-	"github.com/QuizApp/content-service/src/pkg/handlers"
-	"github.com/QuizApp/content-service/src/pkg/repository"
+	"QuizApp/services/content-service/src/pkg/database"
+	"QuizApp/services/content-service/src/pkg/handlers"
+	"QuizApp/services/content-service/src/pkg/repository"
+
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -26,6 +28,16 @@ func main() {
 
     // Initialize router
     r := gin.Default()
+
+    // Configure CORS
+    r.Use(cors.New(cors.Config{
+        AllowOrigins:     []string{"http://localhost:3000"},
+        AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+        AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+        ExposeHeaders:    []string{"Content-Length"},
+        AllowCredentials: true,
+        MaxAge:           12 * 60 * 60,
+    }))
 
     // Health check
     r.GET("/health", func(c *gin.Context) {

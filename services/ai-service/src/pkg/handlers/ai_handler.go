@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/QuizApp/QuizApp/services/ai-service/src/pkg/api"
-	"github.com/QuizApp/QuizApp/services/ai-service/src/pkg/middleware"
-	"github.com/QuizApp/QuizApp/services/ai-service/src/pkg/service"
+	"QuizApp/services/ai-service/src/pkg/api"
+	"QuizApp/services/ai-service/src/pkg/middleware"
+	"QuizApp/services/ai-service/src/pkg/service"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"go.uber.org/zap"

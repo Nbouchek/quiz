@@ -6,7 +6,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/QuizApp/user-service/src/pkg/models"
+	"QuizApp/services/user-service/src/pkg/models"
+
 	"github.com/google/uuid"
 )
 

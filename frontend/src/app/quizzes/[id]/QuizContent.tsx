@@ -7,17 +7,18 @@ import {
   QuestionMarkCircleIcon,
 } from '@heroicons/react/24/outline'
 import { AxiosError } from 'axios'
-import { useRouter } from 'next/navigation'
 
 interface QuizContentProps {
   quizId: string
 }
 
 export default function QuizContent({ quizId }: QuizContentProps) {
-  const router = useRouter()
   const { quiz, isLoading, error } = useQuiz(quizId, {
     enabled: !!quizId,
   })
+
+  console.log('Current quiz ID in QuizContent:', quizId)
+  console.log('Actual quiz data:', quiz)
 
   if (!quizId) {
     return (
@@ -90,12 +91,21 @@ export default function QuizContent({ quizId }: QuizContentProps) {
             </div>
           </div>
 
-          <button
-            onClick={() => router.push(`/quiz/${quizId}/attempt`)}
-            className="w-full rounded-md bg-primary px-6 py-4 text-lg font-semibold text-white shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 sm:w-auto"
+          <a
+            href={`/quiz/${quizId}/attempt`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-primary hover:bg-primary/90 focus:ring-primary inline-block w-full rounded-md px-6 py-4 text-center text-lg font-semibold text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 sm:w-auto"
           >
-            Start Quiz
-          </button>
+            Start Quiz In New Tab
+          </a>
+
+          <a
+            href={`/quiz/${quizId}/attempt`}
+            className="ml-4 inline-block rounded-md bg-gray-600 px-6 py-4 text-center text-lg font-semibold text-white shadow-sm hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 sm:w-auto"
+          >
+            Start Quiz In This Tab
+          </a>
         </div>
       </div>
     </div>

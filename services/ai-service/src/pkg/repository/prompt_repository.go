@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/QuizApp/QuizApp/services/ai-service/src/pkg/models"
+	"QuizApp/services/ai-service/src/pkg/models"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 )

@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Direct API Test</title>
+    <style>
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
+          Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        line-height: 1.6;
+      }
+      h1,
+      h2 {
+        color: #333;
+      }
+      .test-section {
+        margin-bottom: 30px;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      .log-container {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        padding: 15px;
+        margin-top: 10px;
+        border-radius: 4px;
+        height: 200px;
+        overflow-y: auto;
+        font-family: monospace;
+        font-size: 14px;
+      }
+      .log-entry {
+        margin: 5px 0;
+        padding: 5px;
+        border-bottom: 1px solid #eee;
+      }
+      .error {
+        color: #dc3545;
+      }
+      .success {
+        color: #28a745;
+      }
+      button {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        margin-right: 10px;
+      }
+      button:hover {
+        background-color: #0069d9;
+      }
+      input,
+      select {
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        margin-right: 10px;
+        font-size: 16px;
+      }
+      .form-group {
+        margin-bottom: 15px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Direct API Test</h1>
+
+    <div class="test-section">
+      <h2>Health Check</h2>
+      <button id="healthCheck">Check API Health</button>
+      <div class="log-container" id="healthLog"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>Create Quiz Attempt</h2>
+      <div class="form-group">
+        <label for="quizId">Quiz ID:</label>
+        <input
+          type="text"
+          id="quizId"
+          value="61a0ca8d-14bc-40d8-a6a2-41a2c71035bd"
+          style="width: 300px"
+        />
+      </div>
+      <div class="form-group">
+        <label for="totalQuestions">Total Questions:</label>
+        <input type="number" id="totalQuestions" value="3" min="1" max="10" />
+      </div>
+      <button id="createAttempt">Create Attempt</button>
+      <div class="log-container" id="createLog"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>Get Questions</h2>
+      <div class="form-group">
+        <label for="attemptId">Attempt ID:</label>
+        <input
+          type="text"
+          id="attemptId"
+          placeholder="Enter attempt ID from previous step"
+          style="width: 300px"
+        />
+      </div>
+      <button id="getQuestions">Get Questions</button>
+      <div class="log-container" id="questionsLog"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>Submit Answer</h2>
+      <div class="form-group">
+        <label for="answerAttemptId">Attempt ID:</label>
+        <input
+          type="text"
+          id="answerAttemptId"
+          placeholder="Enter attempt ID"
+          style="width: 300px"
+        />
+      </div>
+      <div class="form-group">
+        <label for="questionId">Question ID:</label>
+        <input
+          type="text"
+          id="questionId"
+          placeholder="Enter question ID"
+          style="width: 300px"
+        />
+      </div>
+      <div class="form-group">
+        <label for="answer">Answer:</label>
+        <input type="text" id="answer" placeholder="Enter your answer" />
+      </div>
+      <button id="submitAnswer">Submit Answer</button>
+      <div class="log-container" id="answerLog"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>Complete Attempt</h2>
+      <div class="form-group">
+        <label for="completeAttemptId">Attempt ID:</label>
+        <input
+          type="text"
+          id="completeAttemptId"
+          placeholder="Enter attempt ID"
+          style="width: 300px"
+        />
+      </div>
+      <button id="completeAttempt">Complete Attempt</button>
+      <div class="log-container" id="completeLog"></div>
+    </div>
+
+    <script>
+      // Helper function to log messages
+      function logMessage(containerId, message, isError = false) {
+        const container = document.getElementById(containerId)
+        const logEntry = document.createElement('div')
+        logEntry.className = isError ? 'log-entry error' : 'log-entry'
+
+        if (typeof message === 'object') {
+          logEntry.textContent = JSON.stringify(message, null, 2)
+        } else {
+          logEntry.textContent = message
+        }
+
+        container.appendChild(logEntry)
+        container.scrollTop = container.scrollHeight
+      }
+
+      // Health check
+      document
+        .getElementById('healthCheck')
+        .addEventListener('click', async () => {
+          const logId = 'healthLog'
+          try {
+            logMessage(logId, 'Checking API health...')
+
+            const response = await fetch('http://localhost:8082/study/health')
+            logMessage(
+              logId,
+              `Status: ${response.status} ${response.statusText}`
+            )
+
+            const data = await response.json()
+            logMessage(logId, 'Response:', false)
+            logMessage(logId, data, false)
+          } catch (error) {
+            logMessage(logId, `Error: ${error.message}`, true)
+          }
+        })
+
+      // Create attempt
+      document
+        .getElementById('createAttempt')
+        .addEventListener('click', async () => {
+          const logId = 'createLog'
+          try {
+            const quizId = document.getElementById('quizId').value
+            const totalQuestions = parseInt(
+              document.getElementById('totalQuestions').value
+            )
+
+            if (!quizId) {
+              logMessage(logId, 'Error: Quiz ID is required', true)
+              return
+            }
+
+            logMessage(
+              logId,
+              `Creating attempt for quiz ${quizId} with ${totalQuestions} questions...`
+            )
+
+            const payload = {
+              quizId,
+              totalQuestions,
+              userId: '00000000-0000-0000-0000-000000000001',
+            }
+
+            logMessage(logId, 'Request payload:')
+            logMessage(logId, payload)
+
+            const response = await fetch(
+              'http://localhost:8082/study/attempts',
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+              }
+            )
+
+            logMessage(
+              logId,
+              `Status: ${response.status} ${response.statusText}`
+            )
+
+            const data = await response.json()
+            logMessage(logId, 'Response:')
+            logMessage(logId, data)
+
+            if (data.success && data.data && data.data.id) {
+              // Auto-fill the attempt ID in other sections
+              document.getElementById('attemptId').value = data.data.id
+              document.getElementById('answerAttemptId').value = data.data.id
+              document.getElementById('completeAttemptId').value = data.data.id
+            }
+          } catch (error) {
+            logMessage(logId, `Error: ${error.message}`, true)
+          }
+        })
+
+      // Get questions
+      document
+        .getElementById('getQuestions')
+        .addEventListener('click', async () => {
+          const logId = 'questionsLog'
+          try {
+            const attemptId = document.getElementById('attemptId').value
+
+            if (!attemptId) {
+              logMessage(logId, 'Error: Attempt ID is required', true)
+              return
+            }
+
+            logMessage(logId, `Getting questions for attempt ${attemptId}...`)
+
+            const response = await fetch(
+              `http://localhost:8082/study/attempts/${attemptId}/questions`
+            )
+            logMessage(
+              logId,
+              `Status: ${response.status} ${response.statusText}`
+            )
+
+            const data = await response.json()
+            logMessage(logId, 'Response:')
+            logMessage(logId, data)
+
+            if (data.success && data.data && data.data.length > 0) {
+              // Auto-fill the first question ID
+              document.getElementById('questionId').value = data.data[0].id
+              // Auto-fill a possible answer
+              if (data.data[0].options && data.data[0].options.length > 0) {
+                document.getElementById('answer').value =
+                  data.data[0].options[0]
+              }
+            }
+          } catch (error) {
+            logMessage(logId, `Error: ${error.message}`, true)
+          }
+        })
+
+      // Submit answer
+      document
+        .getElementById('submitAnswer')
+        .addEventListener('click', async () => {
+          const logId = 'answerLog'
+          try {
+            const attemptId = document.getElementById('answerAttemptId').value
+            const questionId = document.getElementById('questionId').value
+            const answer = document.getElementById('answer').value
+
+            if (!attemptId || !questionId || !answer) {
+              logMessage(logId, 'Error: All fields are required', true)
+              return
+            }
+
+            logMessage(
+              logId,
+              `Submitting answer "${answer}" for question ${questionId} in attempt ${attemptId}...`
+            )
+
+            const payload = {
+              questionId,
+              answer,
+            }
+
+            logMessage(logId, 'Request payload:')
+            logMessage(logId, payload)
+
+            const response = await fetch(
+              `http://localhost:8082/study/attempts/${attemptId}/answers`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+              }
+            )
+
+            logMessage(
+              logId,
+              `Status: ${response.status} ${response.statusText}`
+            )
+
+            const data = await response.json()
+            logMessage(logId, 'Response:')
+            logMessage(logId, data)
+          } catch (error) {
+            logMessage(logId, `Error: ${error.message}`, true)
+          }
+        })
+
+      // Complete attempt
+      document
+        .getElementById('completeAttempt')
+        .addEventListener('click', async () => {
+          const logId = 'completeLog'
+          try {
+            const attemptId = document.getElementById('completeAttemptId').value
+
+            if (!attemptId) {
+              logMessage(logId, 'Error: Attempt ID is required', true)
+              return
+            }
+
+            logMessage(logId, `Completing attempt ${attemptId}...`)
+
+            const response = await fetch(
+              `http://localhost:8082/study/attempts/${attemptId}/complete`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({}),
+              }
+            )
+
+            logMessage(
+              logId,
+              `Status: ${response.status} ${response.statusText}`
+            )
+
+            const data = await response.json()
+            logMessage(logId, 'Response:')
+            logMessage(logId, data)
+          } catch (error) {
+            logMessage(logId, `Error: ${error.message}`, true)
+          }
+        })
+    </script>
+  </body>
+</html>

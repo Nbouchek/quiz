@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/QuizApp/QuizApp/services/ai-service/src/pkg/testutil"
+	"QuizApp/services/ai-service/src/pkg/testutil"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

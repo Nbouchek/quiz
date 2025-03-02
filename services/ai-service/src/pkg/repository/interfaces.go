@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"github.com/QuizApp/QuizApp/services/ai-service/src/pkg/models"
+	"QuizApp/services/ai-service/src/pkg/models"
 	"github.com/google/uuid"
 )
 
