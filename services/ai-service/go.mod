@@ -3,6 +3,7 @@ module QuizApp/services/ai-service
 go 1.21
 
 require (
+	github.com/gin-contrib/cors v1.5.0
 	github.com/gin-gonic/gin v1.10.0
 	github.com/golang-migrate/migrate/v4 v4.17.0
 	github.com/google/uuid v1.6.0

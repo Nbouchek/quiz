@@ -230,7 +230,7 @@ func main() {
 	})
 
 	// Quiz attempt routes
-	router.POST("/study/attempts", func(c *gin.Context) {
+	router.POST("/attempts", func(c *gin.Context) {
 		var requestBody struct {
 			UserID         string `json:"userId" binding:"required"`
 			QuizID         string `json:"quizId" binding:"required"`
@@ -294,7 +294,7 @@ func main() {
 		})
 	})
 
-	router.GET("/study/attempts/:id", func(c *gin.Context) {
+	router.GET("/attempts/:id", func(c *gin.Context) {
 		id := c.Param("id")
 		log.Printf("Getting attempt: %s", id)
 
@@ -326,7 +326,7 @@ func main() {
 		})
 	})
 
-	router.GET("/study/attempts/:id/questions", func(c *gin.Context) {
+	router.GET("/attempts/:id/questions", func(c *gin.Context) {
 		id := c.Param("id")
 		log.Printf("Getting questions for attempt: %s", id)
 		
@@ -356,7 +356,7 @@ func main() {
 		})
 	})
 
-	router.POST("/study/attempts/:id/answers", func(c *gin.Context) {
+	router.POST("/attempts/:id/answers", func(c *gin.Context) {
 		id := c.Param("id")
 		var answer struct {
 			QuestionID string `json:"questionId"`
@@ -465,7 +465,7 @@ func main() {
 		})
 	})
 
-	router.POST("/study/attempts/:id/complete", func(c *gin.Context) {
+	router.POST("/attempts/:id/complete", func(c *gin.Context) {
 		id := c.Param("id")
 		log.Printf("Completing attempt: %s", id)
 

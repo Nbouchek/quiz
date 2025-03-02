@@ -128,7 +128,10 @@ const studyServiceProxy = createProxyMiddleware(
     },
     changeOrigin: true,
     onProxyReq: (proxyReq, req, res) => {
+      // Log the original and rewritten paths for debugging
+      console.log(`[Study Service Proxy] Original path: ${req.path}`);
       console.log(`[Study Service Proxy] Forwarding to: ${proxyReq.path}`);
+
       if (req.body && (req.method === "POST" || req.method === "PUT")) {
         const bodyData = JSON.stringify(req.body);
         proxyReq.setHeader("Content-Length", Buffer.byteLength(bodyData));

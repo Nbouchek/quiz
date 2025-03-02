@@ -3,20 +3,18 @@ FROM golang:1.21-alpine AS builder
 
 WORKDIR /app
 
-# Install git for go mod download
+# Install git and build dependencies
 RUN apk add --no-cache git
 
-# Copy go mod and sum files
-COPY go.mod go.sum ./
-
 # Download dependencies
+COPY go.mod go.sum ./
 RUN go mod download
 
 # Copy source code
 COPY . .
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -o main ./src
+RUN CGO_ENABLED=0 GOOS=linux go build -o main ./src/main.go
 
 # Final stage
 FROM alpine:latest
@@ -25,18 +23,10 @@ WORKDIR /app
 
 # Copy the binary from builder
 COPY --from=builder /app/main .
-
-# Copy environment file
 COPY --from=builder /app/.env.example .env
-
-# Create migrations directory
-RUN mkdir -p /app/migrations
-
-# Copy migrations
-COPY --from=builder /app/migrations /app/migrations
 
 # Expose port
 EXPOSE 8084
 
-# Command to run
+# Run the binary
 CMD ["./main"]

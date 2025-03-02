@@ -10,7 +10,7 @@ RUN apk add --no-cache git
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy source code and migrations
+# Copy source code
 COPY . .
 
 # Build the application
@@ -21,13 +21,14 @@ FROM alpine:latest
 
 WORKDIR /app
 
-# Copy the binary and migrations from builder
+# Copy the binary from builder
 COPY --from=builder /app/main .
-COPY --from=builder /app/migrations ./migrations
 COPY --from=builder /app/.env.example .env
+# Copy migrations folder
+COPY --from=builder /app/migrations ./migrations
 
 # Expose port
-EXPOSE 8080
+EXPOSE 8085
 
 # Run the binary
 CMD ["./main"]
