@@ -123,6 +123,7 @@ func main() {
 	r.POST("/attempts", quizAttemptHandler.StartAttempt)
 	r.GET("/attempts/:id", quizAttemptHandler.GetAttempt)
 	r.GET("/attempts/:id/questions", quizAttemptHandler.GetQuestions)
+	r.GET("/attempts/:id/answers", quizAttemptHandler.GetAnswers)
 	r.POST("/attempts/:id/answers", quizAttemptHandler.SubmitAnswer)
 	r.POST("/attempts/:id/complete", quizAttemptHandler.CompleteAttempt)
 	r.GET("/users/:id/attempts", quizAttemptHandler.ListUserAttempts)

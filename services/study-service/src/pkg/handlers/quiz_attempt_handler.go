@@ -549,4 +549,103 @@ func (h *QuizAttemptHandler) ListUserAttempts(c *gin.Context) {
 		"success": true,
 		"data":    modelAttempts,
 	})
+}
+
+// GetAnswers handles GET /attempts/:id/answers
+func (h *QuizAttemptHandler) GetAnswers(c *gin.Context) {
+	attemptID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid attempt ID",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	log.Printf("GetAnswers: Retrieving answers for attempt ID: %s", attemptID.String())
+
+	// First verify the attempt exists
+	attempt, err := h.repo.GetAttempt(c.Request.Context(), attemptID)
+	if err == repository.ErrAttemptNotFound {
+		log.Printf("GetAnswers: Attempt not found: %s", attemptID.String())
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"error":   "Attempt not found",
+		})
+		return
+	}
+	if err != nil {
+		log.Printf("GetAnswers: Error retrieving attempt: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to get attempt",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	// Get the answers for this attempt
+	answers, err := h.repo.GetAttemptAnswers(c.Request.Context(), attemptID)
+	if err != nil {
+		log.Printf("GetAnswers: Error retrieving answers: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to get answers",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	// Get questions to include with answers
+	questions, err := h.repo.GetQuestions(c.Request.Context(), attempt.QuizID)
+	if err != nil {
+		log.Printf("GetAnswers: Error retrieving questions: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to get questions",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	// Create a map of question IDs to questions
+	questionMap := make(map[uuid.UUID]*repository.Question)
+	for _, question := range questions {
+		questionMap[question.ID] = question
+	}
+
+	// Create response objects with questions included
+	var responseAnswers []map[string]interface{} = []map[string]interface{}{} // Initialize as empty array, not nil
+
+	for _, answer := range answers {
+		question, exists := questionMap[answer.QuestionID]
+		if !exists {
+			log.Printf("GetAnswers: Question not found for answer: %s", answer.ID.String())
+			continue
+		}
+
+		responseAnswer := map[string]interface{}{
+			"id":         answer.ID.String(),
+			"questionId": answer.QuestionID.String(),
+			"answer":     answer.Answer,
+			"isCorrect":  answer.IsCorrect,
+			"question": map[string]interface{}{
+				"text":          question.Text,
+				"options":       question.Options,
+				"correctAnswer": question.CorrectAnswer,
+				// Note: The repository.Question doesn't have an Explanation field, so we're omitting it
+				// We could fetch this from the content service if needed
+			},
+		}
+		responseAnswers = append(responseAnswers, responseAnswer)
+	}
+
+	// Log the response we're sending back
+	log.Printf("GetAnswers: Returning %d answers for attempt ID: %s", len(responseAnswers), attemptID.String())
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    responseAnswers,
+	})
 } 
