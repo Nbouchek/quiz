@@ -476,6 +476,31 @@ func (h *QuizAttemptHandler) CompleteAttempt(c *gin.Context) {
 	attempt.Status = string(modelAttempt.Status)
 	attempt.CompletedAt = modelAttempt.CompletedAt
 	attempt.UpdatedAt = modelAttempt.UpdatedAt
+	
+	// Recalculate the final score before completing
+	// Get the answers for this attempt
+	answers, err := h.repo.GetAttemptAnswers(c.Request.Context(), attemptID)
+	if err != nil {
+		log.Printf("Warning: Failed to get answers for score calculation: %v", err)
+	} else {
+		// Count correct answers
+		correctAnswers := 0
+		for _, ans := range answers {
+			if ans.IsCorrect {
+				correctAnswers++
+			}
+		}
+		
+		// Calculate and update the score
+		if attempt.TotalQuestions > 0 {
+			attempt.CorrectAnswers = correctAnswers
+			attempt.Score = float64(correctAnswers) / float64(attempt.TotalQuestions) * 100
+			log.Printf("CompleteAttempt: Calculated final score for attempt %s: %d/%d correct answers, score: %.2f%%", 
+				attemptID, correctAnswers, attempt.TotalQuestions, attempt.Score)
+		} else {
+			log.Printf("Warning: Cannot calculate score for attempt %s - total questions is zero", attemptID)
+		}
+	}
 
 	if err := h.repo.UpdateAttempt(c.Request.Context(), attempt); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{

@@ -18,14 +18,14 @@ export default function Home() {
         <div className="mt-16 flex flex-col items-center justify-center gap-8 sm:flex-row">
           <Link
             href="/create"
-            className="inline-flex items-center justify-center rounded-xl bg-green-500 px-16 py-8 text-4xl font-black text-white shadow-[0_4px_12px_rgba(34,197,94,0.5)] ring-1 ring-green-600 transition-all duration-300 hover:-translate-y-1 hover:scale-105 hover:bg-green-400 hover:shadow-[0_8px_30px_rgba(34,197,94,0.6)] active:scale-95"
+            className="inline-flex items-center justify-center rounded-xl bg-primary-500 px-16 py-8 text-4xl font-black text-white shadow-[0_4px_12px_rgba(59,130,246,0.5)] ring-1 ring-primary-600 transition-all duration-300 hover:-translate-y-1 hover:scale-105 hover:bg-primary-400 hover:shadow-[0_8px_30px_rgba(59,130,246,0.6)] active:scale-95"
           >
             <PlusIcon className="mr-4 h-12 w-12" aria-hidden="true" />
             Create a Quiz
           </Link>
           <Link
             href="/explore"
-            className="text-2xl font-bold text-gray-900 no-underline transition-colors duration-200 hover:text-green-600"
+            className="text-2xl font-bold text-gray-900 no-underline transition-colors duration-200 hover:text-primary-600"
           >
             Explore Quizzes <span aria-hidden="true">→</span>
           </Link>
@@ -35,7 +35,7 @@ export default function Home() {
       {/* Features section */}
       <div className="mx-auto mt-16 max-w-7xl px-6 sm:mt-20 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-base font-semibold leading-7 text-green-600">
+          <h2 className="text-base font-semibold leading-7 text-primary-600">
             Everything you need
           </h2>
           <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
@@ -47,7 +47,7 @@ export default function Home() {
             <div className="flex flex-col">
               <dt className="flex items-center gap-x-3 text-base font-semibold leading-7 text-gray-900">
                 <PlusIcon
-                  className="h-5 w-5 flex-none text-green-600"
+                  className="h-5 w-5 flex-none text-primary-600"
                   aria-hidden="true"
                 />
                 Create Custom Quizzes
@@ -62,7 +62,7 @@ export default function Home() {
             <div className="flex flex-col">
               <dt className="flex items-center gap-x-3 text-base font-semibold leading-7 text-gray-900">
                 <ClockIcon
-                  className="h-5 w-5 flex-none text-green-600"
+                  className="h-5 w-5 flex-none text-primary-600"
                   aria-hidden="true"
                 />
                 Track Progress
@@ -77,7 +77,7 @@ export default function Home() {
             <div className="flex flex-col">
               <dt className="flex items-center gap-x-3 text-base font-semibold leading-7 text-gray-900">
                 <FireIcon
-                  className="h-5 w-5 flex-none text-green-600"
+                  className="h-5 w-5 flex-none text-primary-600"
                   aria-hidden="true"
                 />
                 Compete & Learn

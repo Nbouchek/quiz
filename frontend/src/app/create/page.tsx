@@ -177,7 +177,7 @@ export default function CreateQuizPage() {
             id="title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm"
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
             placeholder="Enter quiz title"
           />
         </div>
@@ -194,7 +194,7 @@ export default function CreateQuizPage() {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm"
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
             placeholder="Enter quiz description"
           />
         </div>
@@ -205,7 +205,7 @@ export default function CreateQuizPage() {
             <button
               type="button"
               onClick={addQuestion}
-              className="inline-flex items-center rounded-md border border-transparent bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+              className="inline-flex items-center rounded-md border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
             >
               <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
               Add Question
@@ -239,7 +239,7 @@ export default function CreateQuizPage() {
                   onChange={(e) =>
                     updateQuestion(questionIndex, 'text', e.target.value)
                   }
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm"
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
                   placeholder="Enter question text"
                 />
               </div>
@@ -261,7 +261,7 @@ export default function CreateQuizPage() {
                         onChange={() =>
                           setCorrectOption(questionIndex, optionIndex)
                         }
-                        className="h-4 w-4 border-gray-300 text-green-600 focus:ring-green-500"
+                        className="h-4 w-4 border-gray-300 text-primary-600 focus:ring-primary-500"
                       />
                       <input
                         type="text"
@@ -273,7 +273,7 @@ export default function CreateQuizPage() {
                             e.target.value
                           )
                         }
-                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm"
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
                         placeholder={`Option ${optionIndex + 1}`}
                       />
                       {question.options.length > 2 && (
@@ -293,7 +293,7 @@ export default function CreateQuizPage() {
                 <button
                   type="button"
                   onClick={() => addOption(questionIndex)}
-                  className="mt-2 inline-flex items-center text-sm text-green-600 hover:text-green-700"
+                  className="mt-2 inline-flex items-center text-sm text-primary-600 hover:text-primary-700"
                 >
                   <PlusIcon className="mr-1 h-4 w-4" />
                   Add Option
@@ -310,7 +310,7 @@ export default function CreateQuizPage() {
                     updateQuestion(questionIndex, 'explanation', e.target.value)
                   }
                   rows={2}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
                   placeholder="Explain why the correct answer is correct"
                 />
               </div>
@@ -321,7 +321,7 @@ export default function CreateQuizPage() {
         <div className="flex justify-end">
           <button
             type="submit"
-            className="inline-flex items-center rounded-md border border-transparent bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+            className="inline-flex items-center rounded-md border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
           >
             Create Quiz
           </button>
@@ -336,9 +336,9 @@ export default function CreateQuizPage() {
 
             <div className="inline-block transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6 sm:align-middle">
               <div className="sm:flex sm:items-start">
-                <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-green-100 sm:mx-0 sm:h-10 sm:w-10">
+                <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-primary-100 sm:mx-0 sm:h-10 sm:w-10">
                   <svg
-                    className="h-6 w-6 text-green-600"
+                    className="h-6 w-6 text-primary-600"
                     fill="none"
                     viewBox="0 0 24 24"
                     strokeWidth="1.5"
@@ -377,14 +377,14 @@ export default function CreateQuizPage() {
                 <button
                   type="button"
                   onClick={handleConfirmSubmit}
-                  className="inline-flex w-full justify-center rounded-md border border-transparent bg-green-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm"
+                  className="inline-flex w-full justify-center rounded-md border border-transparent bg-primary-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm"
                 >
                   Create Quiz
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowConfirmation(false)}
-                  className="mt-3 inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 sm:mt-0 sm:w-auto sm:text-sm"
+                  className="mt-3 inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 sm:mt-0 sm:w-auto sm:text-sm"
                 >
                   Cancel
                 </button>

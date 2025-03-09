@@ -79,7 +79,7 @@ export default function ExplorePage() {
           <button
             onClick={handleRefresh}
             disabled={isLoading}
-            className="mt-4 inline-flex items-center rounded-md bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 sm:mt-0"
+            className="mt-4 inline-flex items-center rounded-md bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 sm:mt-0"
           >
             <ArrowPathIcon
               className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}

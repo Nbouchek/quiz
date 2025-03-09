@@ -25,7 +25,7 @@ export function Navbar() {
             <div className="flex h-16 justify-between">
               <div className="flex">
                 <div className="flex flex-shrink-0 items-center">
-                  <Link href="/" className="text-primary text-xl font-bold">
+                  <Link href="/" className="text-xl font-bold text-primary-600">
                     QuizApp
                   </Link>
                 </div>
@@ -37,8 +37,8 @@ export function Navbar() {
                       className={cn(
                         'inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium',
                         pathname === item.href
-                          ? 'border-primary text-gray-900'
-                          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                          ? 'border-primary-600 text-primary-800'
+                          : 'border-transparent text-gray-500 hover:border-primary-300 hover:text-primary-700'
                       )}
                     >
                       {item.name}
@@ -48,10 +48,10 @@ export function Navbar() {
               </div>
               <div className="hidden sm:ml-6 sm:flex sm:items-center">
                 <Menu as="div" className="relative ml-3">
-                  <Menu.Button className="focus:ring-primary flex rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-offset-2">
+                  <Menu.Button className="flex rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2">
                     <span className="sr-only">Open user menu</span>
                     <UserCircleIcon
-                      className="h-8 w-8 text-gray-400"
+                      className="h-8 w-8 text-primary-400"
                       aria-hidden="true"
                     />
                   </Menu.Button>
@@ -70,8 +70,10 @@ export function Navbar() {
                           <Link
                             href="/profile"
                             className={cn(
-                              active ? 'bg-gray-100' : '',
-                              'block px-4 py-2 text-sm text-gray-700'
+                              active
+                                ? 'bg-primary-50 text-primary-700'
+                                : 'text-gray-700',
+                              'block px-4 py-2 text-sm'
                             )}
                           >
                             Your Profile
@@ -82,8 +84,10 @@ export function Navbar() {
                         {({ active }) => (
                           <button
                             className={cn(
-                              active ? 'bg-gray-100' : '',
-                              'block w-full px-4 py-2 text-left text-sm text-gray-700'
+                              active
+                                ? 'bg-primary-50 text-primary-700'
+                                : 'text-gray-700',
+                              'block w-full px-4 py-2 text-left text-sm'
                             )}
                           >
                             Sign out
@@ -95,7 +99,7 @@ export function Navbar() {
                 </Menu>
               </div>
               <div className="-mr-2 flex items-center sm:hidden">
-                <Disclosure.Button className="focus:ring-primary inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset">
+                <Disclosure.Button className="inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-primary-50 hover:text-primary-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500">
                   <span className="sr-only">Open main menu</span>
                   {open ? (
                     <XMarkIcon className="block h-6 w-6" aria-hidden="true" />
@@ -117,8 +121,8 @@ export function Navbar() {
                   className={cn(
                     'block border-l-4 py-2 pl-3 pr-4 text-base font-medium',
                     pathname === item.href
-                      ? 'border-primary text-primary bg-primary-50'
-                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700'
+                      ? 'border-primary-600 bg-primary-50 text-primary-700'
+                      : 'border-transparent text-gray-500 hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700'
                   )}
                 >
                   {item.name}
@@ -126,17 +130,33 @@ export function Navbar() {
               ))}
             </div>
             <div className="border-t border-gray-200 pb-3 pt-4">
-              <div className="space-y-1">
+              <div className="flex items-center px-4">
+                <div className="flex-shrink-0">
+                  <UserCircleIcon
+                    className="h-8 w-8 text-primary-400"
+                    aria-hidden="true"
+                  />
+                </div>
+                <div className="ml-3">
+                  <div className="text-base font-medium text-gray-800">
+                    User
+                  </div>
+                  <div className="text-sm font-medium text-gray-500">
+                    user@example.com
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 space-y-1">
                 <Disclosure.Button
                   as={Link}
                   href="/profile"
-                  className="block px-4 py-2 text-base font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                  className="block px-4 py-2 text-base font-medium text-gray-500 hover:bg-primary-50 hover:text-primary-700"
                 >
                   Your Profile
                 </Disclosure.Button>
                 <Disclosure.Button
                   as="button"
-                  className="block w-full px-4 py-2 text-left text-base font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                  className="block w-full px-4 py-2 text-left text-base font-medium text-gray-500 hover:bg-primary-50 hover:text-primary-700"
                 >
                   Sign out
                 </Disclosure.Button>

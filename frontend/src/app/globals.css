@@ -3,8 +3,9 @@
 @tailwind utilities;
 
 :root {
-  --primary: #0070f3;
-  --primary-600: #0051a8;
+  --primary: #2563eb;
+  --primary-600: #1d4ed8;
+  --primary-50: #eff6ff;
 }
 
 body {
@@ -29,4 +30,8 @@ body {
 
 .focus\:ring-primary:focus {
   --tw-ring-color: var(--primary);
+}
+
+.bg-primary-50 {
+  background-color: var(--primary-50);
 }

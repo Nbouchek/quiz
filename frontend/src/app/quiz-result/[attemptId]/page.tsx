@@ -185,7 +185,7 @@ export default function QuizResultPage() {
                 ))}
               </div>
               {answer.question.explanation && (
-                <div className="mt-4 rounded-lg bg-blue-50 p-4 text-sm text-blue-700">
+                <div className="mt-4 rounded-lg bg-primary-50 p-4 text-sm text-primary-700">
                   <strong>Explanation:</strong> {answer.question.explanation}
                 </div>
               )}
