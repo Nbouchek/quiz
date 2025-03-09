@@ -37,18 +37,166 @@ export default function QuizResultPage() {
   const [answers, setAnswers] = useState<Answer[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string>('')
+  const [score, setScore] = useState<number>(0)
+  const [rawData, setRawData] = useState<any>(null) // Store raw response for debugging
+
+  // DEBUG MODE
+  const DEBUG = true
+
+  // Helper logging function
+  const debugLog = (...args: any[]) => {
+    if (DEBUG) {
+      console.log('QUIZ RESULT DEBUG:', ...args)
+    }
+  }
 
   useEffect(() => {
     const loadQuizResult = async () => {
       try {
+        // Log the attempt ID to verify it's correct
+        debugLog('Loading quiz result for attempt ID:', params.attemptId)
+
         const response = await fetch(
           `${STUDY_API_URL}/attempts/${params.attemptId}`
         )
+
         if (!response.ok) {
-          throw new Error('Failed to load quiz result')
+          throw new Error(`Failed to load quiz result: ${response.status}`)
         }
-        const data = await response.json()
-        setAttempt(data.data)
+
+        // Parse the response data
+        const responseData = await response.json()
+        setRawData(responseData) // Store raw data for debugging
+
+        debugLog('Full API Response:', JSON.stringify(responseData, null, 2))
+
+        // Check if the expected data exists
+        if (!responseData || !responseData.data) {
+          throw new Error('Invalid response format: missing data property')
+        }
+
+        const attemptData = responseData.data
+
+        // Store the attempt data
+        setAttempt(attemptData)
+
+        // Log detailed data about the attempt for debugging
+        debugLog('Attempt data properties:', Object.keys(attemptData))
+        debugLog(
+          'correctAnswers:',
+          attemptData.correctAnswers,
+          'type:',
+          typeof attemptData.correctAnswers
+        )
+        debugLog(
+          'totalQuestions:',
+          attemptData.totalQuestions,
+          'type:',
+          typeof attemptData.totalQuestions
+        )
+        debugLog(
+          'score from API:',
+          attemptData.score,
+          'type:',
+          typeof attemptData.score
+        )
+
+        // Manual parsing approach for the score calculation
+        let correctCount = 0
+        let totalCount = 0
+
+        // Check if correctAnswers is missing (this appears to be the case from the debug output)
+        if (
+          attemptData.correctAnswers === undefined ||
+          attemptData.correctAnswers === null
+        ) {
+          debugLog(
+            'correctAnswers is missing, will use score from API directly'
+          )
+          // If API provides a score, use that directly
+          if (
+            typeof attemptData.score === 'number' &&
+            !isNaN(attemptData.score)
+          ) {
+            setScore(attemptData.score)
+            debugLog('Using score directly from API:', attemptData.score)
+
+            // Since we don't have correctAnswers but we need to display it, calculate it from score
+            if (
+              typeof attemptData.totalQuestions === 'number' &&
+              attemptData.totalQuestions > 0
+            ) {
+              // If we have a percentage score, convert it back to number of correct answers
+              const calculatedCorrectAnswers = Math.round(
+                (attemptData.score / 100) * attemptData.totalQuestions
+              )
+              // Update the attempt object with the calculated correctAnswers
+              attemptData.correctAnswers = calculatedCorrectAnswers
+              debugLog(
+                'Calculated correctAnswers from score:',
+                calculatedCorrectAnswers
+              )
+            }
+
+            // Store the updated attempt data
+            setAttempt(attemptData)
+            return
+          }
+        }
+
+        // Try to parse the values safely (this is the original logic for when correctAnswers exists)
+        try {
+          correctCount = parseInt(attemptData.correctAnswers, 10)
+          totalCount = parseInt(attemptData.totalQuestions, 10)
+
+          // If parsing resulted in NaN, use the original values
+          if (isNaN(correctCount)) {
+            debugLog(
+              'Failed to parse correctAnswers as int, using original:',
+              attemptData.correctAnswers
+            )
+            correctCount = attemptData.correctAnswers
+          }
+
+          if (isNaN(totalCount)) {
+            debugLog(
+              'Failed to parse totalQuestions as int, using original:',
+              attemptData.totalQuestions
+            )
+            totalCount = attemptData.totalQuestions
+          }
+        } catch (parseError) {
+          debugLog('Error parsing score values:', parseError)
+          // Fall back to original values if parsing fails
+          correctCount = attemptData.correctAnswers
+          totalCount = attemptData.totalQuestions
+        }
+
+        // Very explicit score calculation with checks
+        let calculatedScore = 0
+
+        if (
+          typeof correctCount === 'number' &&
+          typeof totalCount === 'number' &&
+          !isNaN(correctCount) &&
+          !isNaN(totalCount) &&
+          totalCount > 0
+        ) {
+          calculatedScore = Math.round((correctCount / totalCount) * 100)
+          debugLog(
+            `Score calculation: (${correctCount} / ${totalCount}) * 100 = ${calculatedScore}%`
+          )
+        } else {
+          debugLog('Invalid values for score calculation:', {
+            correctCount,
+            totalCount,
+          })
+        }
+
+        // Force a valid score (0-100 range)
+        calculatedScore = Math.max(0, Math.min(100, calculatedScore))
+        setScore(calculatedScore)
+        debugLog('Final score set to:', calculatedScore)
 
         // Load answers
         const answersResponse = await fetch(
@@ -58,8 +206,10 @@ export default function QuizResultPage() {
           throw new Error('Failed to load answers')
         }
         const answersData = await answersResponse.json()
-        setAnswers(answersData.data)
+        debugLog('Answers data:', answersData.data)
+        setAnswers(answersData.data || [])
       } catch (err) {
+        console.error('Error loading quiz result:', err)
         setError(
           err instanceof Error ? err.message : 'Failed to load quiz result'
         )
@@ -68,8 +218,17 @@ export default function QuizResultPage() {
       }
     }
 
-    loadQuizResult()
+    if (params.attemptId) {
+      loadQuizResult()
+    }
   }, [params.attemptId])
+
+  // Additional effect to log after state updates
+  useEffect(() => {
+    if (attempt && !loading) {
+      debugLog('State after data load - attempt:', attempt, 'score:', score)
+    }
+  }, [attempt, score, loading])
 
   if (loading) {
     return (
@@ -105,6 +264,14 @@ export default function QuizResultPage() {
               <h3 className="text-sm font-medium text-red-800">
                 Failed to load quiz result
               </h3>
+              {rawData && (
+                <details className="mt-2 text-xs">
+                  <summary>Debug Information</summary>
+                  <pre className="mt-2 max-h-96 overflow-auto rounded bg-gray-100 p-2">
+                    {JSON.stringify(rawData, null, 2)}
+                  </pre>
+                </details>
+              )}
             </div>
           </div>
         </div>
@@ -112,22 +279,58 @@ export default function QuizResultPage() {
     )
   }
 
+  // Display debug info in development mode
+  const debugInfo = DEBUG ? (
+    <div className="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-xs">
+      <details>
+        <summary className="cursor-pointer font-bold">
+          Debug Information
+        </summary>
+        <div className="mt-2 space-y-2">
+          <div>
+            <strong>Attempt ID:</strong> {params.attemptId as string}
+          </div>
+          <div>
+            <strong>Calculated Score:</strong> {score}%
+          </div>
+          <div>
+            <strong>Raw Data:</strong>
+            <pre className="mt-1 max-h-40 overflow-auto rounded bg-gray-100 p-2">
+              {JSON.stringify(
+                {
+                  correctAnswers: attempt.correctAnswers,
+                  totalQuestions: attempt.totalQuestions,
+                  score: attempt.score,
+                },
+                null,
+                2
+              )}
+            </pre>
+          </div>
+        </div>
+      </details>
+    </div>
+  ) : null
+
   return (
     <div className="mx-auto max-w-4xl p-4">
+      {debugInfo}
+
       <div className="mb-8 overflow-hidden rounded-lg bg-white shadow">
         <div className="p-6">
           <h1 className="mb-4 text-3xl font-bold">Quiz Results</h1>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="rounded-lg bg-gray-50 p-4">
               <div className="text-sm text-gray-500">Score</div>
-              <div className="mt-1 text-2xl font-semibold">
-                {Math.round(attempt.score)}%
-              </div>
+              <div className="mt-1 text-2xl font-semibold">{score}%</div>
             </div>
             <div className="rounded-lg bg-gray-50 p-4">
               <div className="text-sm text-gray-500">Correct Answers</div>
               <div className="mt-1 text-2xl font-semibold">
-                {attempt.correctAnswers} / {attempt.totalQuestions}
+                {attempt.correctAnswers !== undefined
+                  ? attempt.correctAnswers
+                  : '0'}{' '}
+                / {attempt.totalQuestions || 0}
               </div>
             </div>
             <div className="rounded-lg bg-gray-50 p-4">
@@ -138,7 +341,7 @@ export default function QuizResultPage() {
                     new Date(attempt.startedAt).getTime()) /
                     1000 /
                     60
-                )}{' '}
+                ) || 0}{' '}
                 min
               </div>
             </div>
@@ -202,7 +405,7 @@ export default function QuizResultPage() {
           Back to Quiz
         </button>
         <button
-          onClick={() => router.push('/quizzes')}
+          onClick={() => router.push('/explore')}
           className="bg-primary hover:bg-primary/90 rounded-md px-4 py-2 text-sm font-semibold text-white shadow-sm"
         >
           Try Another Quiz
