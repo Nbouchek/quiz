@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -229,20 +231,13 @@ func (h *QuizAttemptHandler) GetQuestions(c *gin.Context) {
 	})
 }
 
-// SubmitAnswer handles POST /attempts/:id/answers
+// SubmitAnswer handles the submission of an answer for a quiz attempt
 func (h *QuizAttemptHandler) SubmitAnswer(c *gin.Context) {
-	attemptID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		log.Printf("ERROR: Invalid attempt ID: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Invalid attempt ID",
-			"details": err.Error(),
-		})
-		return
-	}
+	attemptID := c.Param("id")
+	log.Printf("Received request: %s %s", c.Request.Method, c.Request.URL.Path)
+	log.Printf("Request headers: %v", c.Request.Header)
 
-	// Log the raw request body for debugging
+	// Debug: Print raw request body
 	var rawData interface{}
 	rawBody, err := c.GetRawData()
 	if err != nil {
@@ -262,7 +257,7 @@ func (h *QuizAttemptHandler) SubmitAnswer(c *gin.Context) {
 	var jsonInput struct {
 		QuestionID interface{} `json:"questionId"`
 		Answer     string      `json:"answer"`
-		IsCorrect  bool        `json:"isCorrect"`
+		IsCorrect  *bool       `json:"isCorrect"` // Make it a pointer so we can check if it was provided
 	}
 
 	if err := json.Unmarshal(rawBody, &jsonInput); err != nil {
@@ -316,17 +311,27 @@ func (h *QuizAttemptHandler) SubmitAnswer(c *gin.Context) {
 	input := struct {
 		QuestionID uuid.UUID
 		Answer     string
-		IsCorrect  bool
 	}{
 		QuestionID: questionIDUUID,
 		Answer:     jsonInput.Answer,
-		IsCorrect:  jsonInput.IsCorrect,
 	}
 
-	log.Printf("DEBUG: Submitting answer for attempt ID: %s, question ID: %s, answer: %s, isCorrect: %v", 
-		attemptID, input.QuestionID, input.Answer, input.IsCorrect)
+	log.Printf("DEBUG: Submitting answer for attempt ID: %s, question ID: %s, answer: %s", 
+		attemptID, input.QuestionID, input.Answer)
 
-	attempt, err := h.repo.GetAttempt(c.Request.Context(), attemptID)
+	// Get the attempt from the database
+	attemptUUID, err := uuid.Parse(attemptID)
+	if err != nil {
+		log.Printf("ERROR: Invalid attempt ID: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid attempt ID",
+			"details": err.Error(),
+		})
+		return
+	}
+	
+	attempt, err := h.repo.GetAttempt(c.Request.Context(), attemptUUID)
 	if err == repository.ErrAttemptNotFound {
 		log.Printf("ERROR: Attempt not found: %s", attemptID)
 		c.JSON(http.StatusNotFound, gin.H{
@@ -357,25 +362,127 @@ func (h *QuizAttemptHandler) SubmitAnswer(c *gin.Context) {
 	log.Printf("DEBUG: Current attempt state: ID: %s, quiz ID: %s, correctAnswers: %d, score: %f", 
 		attempt.ID, attempt.QuizID, attempt.CorrectAnswers, attempt.Score)
 
-	modelAttempt := &models.QuizAttempt{
-		ID:                  attempt.ID,
-		UserID:             attempt.UserID,
-		QuizID:             attempt.QuizID,
-		Status:             models.AttemptStatus(attempt.Status),
-		CurrentQuestionIndex: attempt.CurrentQuestionIndex,
-		TotalQuestions:     attempt.TotalQuestions,
-		Score:              attempt.Score,
-		StartedAt:          attempt.StartedAt,
-		CompletedAt:        attempt.CompletedAt,
-		CreatedAt:          attempt.CreatedAt,
-		UpdatedAt:          attempt.UpdatedAt,
+	// Get all questions for this quiz to find the correct one
+	log.Printf("DEBUG: Fetching questions for quiz ID: %s", attempt.QuizID)
+	allQuestions, err := h.repo.GetQuestions(c.Request.Context(), attempt.QuizID)
+	if err != nil {
+		log.Printf("ERROR: Failed to get questions: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to verify answer",
+			"details": "Could not retrieve questions",
+		})
+		return
+	}
+	log.Printf("DEBUG: Retrieved %d questions for quiz ID: %s", len(allQuestions), attempt.QuizID)
+
+	// Find the question we're answering
+	var correctAnswer string
+	var foundQuestion bool
+	
+	log.Printf("DEBUG: Looking for question with ID: %s", input.QuestionID)
+	for i, q := range allQuestions {
+		log.Printf("DEBUG: Checking question %d with ID: %s, text: %s, correct answer: %s", 
+			i+1, q.ID, q.Text, q.CorrectAnswer)
+		if q.ID == input.QuestionID {
+			correctAnswer = q.CorrectAnswer
+			foundQuestion = true
+			log.Printf("DEBUG: Found matching question! Correct answer is: %s", correctAnswer)
+			break
+		}
+	}
+	
+	if !foundQuestion {
+		log.Printf("ERROR: Question not found: %s", input.QuestionID)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Question not found",
+			"details": "The question does not exist in this quiz",
+		})
+		return
 	}
 
-	answer := modelAttempt.Submit(input.QuestionID, input.Answer, input.IsCorrect)
+	// IMPORTANT: Verify if the submitted answer is correct by comparing with the actual correct answer
+	// Trim whitespace from both strings and do a case-insensitive comparison
+	log.Printf("DEBUG: Raw comparison - submitted answer='%s' (type: %T), correct answer='%s' (type: %T)", 
+		input.Answer, input.Answer, correctAnswer, correctAnswer)
+	
+	submittedAnswer := strings.TrimSpace(input.Answer)
+	correctAnswerTrimmed := strings.TrimSpace(correctAnswer)
+	
+	log.Printf("DEBUG: After trimming - submitted='%s', correct='%s'", 
+		submittedAnswer, correctAnswerTrimmed)
+	
+	// Direct string comparison
+	directMatch := submittedAnswer == correctAnswerTrimmed
+	
+	// Case-insensitive comparison
+	caseInsensitiveMatch := strings.EqualFold(submittedAnswer, correctAnswerTrimmed)
+	
+	// Check if they have the same length
+	sameLength := len(submittedAnswer) == len(correctAnswerTrimmed)
+	
+	// Check each character
+	var charByCharMatch = true
+	if sameLength {
+		for i := 0; i < len(submittedAnswer); i++ {
+			if submittedAnswer[i] != correctAnswerTrimmed[i] {
+				charByCharMatch = false
+				log.Printf("DEBUG: Character mismatch at position %d: '%c' vs '%c' (ASCII: %d vs %d)", 
+					i, submittedAnswer[i], correctAnswerTrimmed[i], 
+					submittedAnswer[i], correctAnswerTrimmed[i])
+			}
+		}
+	} else {
+		charByCharMatch = false
+	}
+	
+	// Use both for debugging, but prioritize direct match for numerical answers
+	actuallyCorrect := directMatch || caseInsensitiveMatch
+	
+	log.Printf("DEBUG: Answer verification details: directMatch=%v, caseInsensitiveMatch=%v, sameLength=%v, charByCharMatch=%v", 
+		directMatch, caseInsensitiveMatch, sameLength, charByCharMatch)
+	log.Printf("DEBUG: Answer verification result: isCorrect=%v (submitted='%s', correct='%s')", 
+		actuallyCorrect, submittedAnswer, correctAnswerTrimmed)
+	
+	// CRITICAL: Always use server-side verification, never client input
+	finalIsCorrect := actuallyCorrect
+	log.Printf("DEBUG: Server verification result: isCorrect=%v for answer '%s'", actuallyCorrect, input.Answer)
+	// Ignore any client-provided isCorrect
+	
+	// If client provided isCorrect, log it but ignore it
+	if jsonInput.IsCorrect != nil {
+		log.Printf("DEBUG: Client provided isCorrect=%v, but using server verification: %v", 
+			*jsonInput.IsCorrect, finalIsCorrect)
+	} else {
+		log.Printf("DEBUG: Using server-verified isCorrect=%v", finalIsCorrect)
+	}
+
+	// Create a model attempt from the repository attempt
+	modelAttempt := &models.QuizAttempt{
+		ID:                  attempt.ID,
+		UserID:              attempt.UserID,
+		QuizID:              attempt.QuizID,
+		Status:              models.AttemptStatus(attempt.Status),
+		CurrentQuestionIndex: attempt.CurrentQuestionIndex,
+		TotalQuestions:      attempt.TotalQuestions,
+		Score:               attempt.Score,
+		StartedAt:           attempt.StartedAt,
+		CompletedAt:         attempt.CompletedAt,
+		CreatedAt:           attempt.CreatedAt,
+		UpdatedAt:           attempt.UpdatedAt,
+	}
+
+	// Submit the answer to the model
+	log.Printf("DEBUG: Submitting answer to model with isCorrect=%v", finalIsCorrect)
+	answer := modelAttempt.Submit(input.QuestionID, input.Answer, finalIsCorrect)
 
 	// Update repository attempt with model changes
-	if input.IsCorrect {
+	if finalIsCorrect {
 		attempt.CorrectAnswers++
+		log.Printf("DEBUG: Answer is correct! Incrementing correct answers to %d", attempt.CorrectAnswers)
+	} else {
+		log.Printf("DEBUG: Answer is incorrect. Correct answers remains at %d", attempt.CorrectAnswers)
 	}
 	attempt.Score = modelAttempt.Score
 	attempt.UpdatedAt = modelAttempt.UpdatedAt
@@ -383,15 +490,19 @@ func (h *QuizAttemptHandler) SubmitAnswer(c *gin.Context) {
 	log.Printf("DEBUG: Updated attempt state: correctAnswers: %d, score: %f", 
 		attempt.CorrectAnswers, attempt.Score)
 
+	// Create a repository answer from the model answer
 	repoAnswer := &repository.Answer{
 		ID:         answer.ID,
 		AttemptID:  answer.AttemptID,
 		QuestionID: answer.QuestionID,
 		Answer:     answer.Answer,
-		IsCorrect:  answer.IsCorrect,
+		IsCorrect:  finalIsCorrect, // Use our final result
 		CreatedAt:  answer.CreatedAt,
 	}
 
+	log.Printf("DEBUG: Saving answer to database with isCorrect=%v", repoAnswer.IsCorrect)
+
+	// Save the answer to the database
 	if err := h.repo.AddAnswer(c.Request.Context(), repoAnswer); err != nil {
 		log.Printf("ERROR: Failed to save answer: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -402,6 +513,7 @@ func (h *QuizAttemptHandler) SubmitAnswer(c *gin.Context) {
 		return
 	}
 
+	// Update the attempt in the database
 	if err := h.repo.UpdateAttempt(c.Request.Context(), attempt); err != nil {
 		log.Printf("ERROR: Failed to update attempt: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -413,9 +525,11 @@ func (h *QuizAttemptHandler) SubmitAnswer(c *gin.Context) {
 	}
 
 	log.Printf("DEBUG: Successfully submitted answer for attempt ID: %s", attemptID)
+
+	// Return the answer
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data":    answer,
+		"data":    repoAnswer,
 	})
 }
 
@@ -423,6 +537,7 @@ func (h *QuizAttemptHandler) SubmitAnswer(c *gin.Context) {
 func (h *QuizAttemptHandler) CompleteAttempt(c *gin.Context) {
 	attemptID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
+		log.Printf("ERROR: Invalid attempt ID: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"error":   "Invalid attempt ID",
@@ -433,6 +548,7 @@ func (h *QuizAttemptHandler) CompleteAttempt(c *gin.Context) {
 
 	attempt, err := h.repo.GetAttempt(c.Request.Context(), attemptID)
 	if err == repository.ErrAttemptNotFound {
+		log.Printf("ERROR: Attempt not found: %s", attemptID)
 		c.JSON(http.StatusNotFound, gin.H{
 			"success": false,
 			"error":   "Attempt not found",
@@ -440,6 +556,7 @@ func (h *QuizAttemptHandler) CompleteAttempt(c *gin.Context) {
 		return
 	}
 	if err != nil {
+		log.Printf("ERROR: Failed to get attempt: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   "Failed to get attempt",
@@ -449,6 +566,7 @@ func (h *QuizAttemptHandler) CompleteAttempt(c *gin.Context) {
 	}
 
 	if attempt.Status != string(models.AttemptStatusInProgress) {
+		log.Printf("ERROR: Attempt is not in progress: %s", attemptID)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"error":   "Attempt is not in progress",
@@ -456,34 +574,13 @@ func (h *QuizAttemptHandler) CompleteAttempt(c *gin.Context) {
 		return
 	}
 
-	modelAttempt := &models.QuizAttempt{
-		ID:                  attempt.ID,
-		UserID:             attempt.UserID,
-		QuizID:             attempt.QuizID,
-		Status:             models.AttemptStatus(attempt.Status),
-		CurrentQuestionIndex: attempt.CurrentQuestionIndex,
-		TotalQuestions:     attempt.TotalQuestions,
-		Score:              attempt.Score,
-		StartedAt:          attempt.StartedAt,
-		CompletedAt:        attempt.CompletedAt,
-		CreatedAt:          attempt.CreatedAt,
-		UpdatedAt:          attempt.UpdatedAt,
-	}
-
-	modelAttempt.Complete()
-
-	// Update repository attempt with model changes
-	attempt.Status = string(modelAttempt.Status)
-	attempt.CompletedAt = modelAttempt.CompletedAt
-	attempt.UpdatedAt = modelAttempt.UpdatedAt
-	
 	// Recalculate the final score before completing
 	// Get the answers for this attempt
 	answers, err := h.repo.GetAttemptAnswers(c.Request.Context(), attemptID)
 	if err != nil {
 		log.Printf("Warning: Failed to get answers for score calculation: %v", err)
 	} else {
-		// Count correct answers
+		// Count correct answers - we can trust isCorrect flag now since we verified each answer during submission
 		correctAnswers := 0
 		for _, ans := range answers {
 			if ans.IsCorrect {
@@ -503,6 +600,23 @@ func (h *QuizAttemptHandler) CompleteAttempt(c *gin.Context) {
 	}
 
 	if err := h.repo.UpdateAttempt(c.Request.Context(), attempt); err != nil {
+		log.Printf("ERROR: Failed to update attempt: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to update attempt",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	// Mark as completed with final update
+	now := time.Now().UTC()
+	attempt.Status = string(models.AttemptStatusCompleted)
+	attempt.CompletedAt = &now
+	attempt.UpdatedAt = now
+
+	if err := h.repo.UpdateAttempt(c.Request.Context(), attempt); err != nil {
+		log.Printf("ERROR: Failed to complete attempt: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   "Failed to complete attempt",
@@ -513,7 +627,7 @@ func (h *QuizAttemptHandler) CompleteAttempt(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data":    modelAttempt,
+		"data":    attempt,
 	})
 }
 

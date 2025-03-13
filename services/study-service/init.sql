@@ -1,5 +1,7 @@
 -- Create the database if it doesn't exist
-CREATE DATABASE IF NOT EXISTS quizapp_study;
+-- PostgreSQL doesn't support IF NOT EXISTS for CREATE DATABASE
+-- This is handled by the create-multiple-databases.sh script
+-- CREATE DATABASE IF NOT EXISTS quizapp_study;
 
 -- Connect to the database
 \c quizapp_study;

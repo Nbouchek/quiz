@@ -1,14 +1,1 @@
-{
-  "/_not-found/page": "app/_not-found/page.js",
-  "/api/quizzes/[quizId]/route": "app/api/quizzes/[quizId]/route.js",
-  "/explore/page": "app/explore/page.js",
-  "/history/page": "app/history/page.js",
-  "/page": "app/page.js",
-  "/quiz-result/[attemptId]/page": "app/quiz-result/[attemptId]/page.js",
-  "/quiz/[quizId]/page": "app/quiz/[quizId]/page.js",
-  "/quiz/[quizId]/attempt/page": "app/quiz/[quizId]/attempt/page.js",
-  "/test/page": "app/test/page.js",
-  "/create/page": "app/create/page.js",
-  "/quizzes/[id]/attempt/page": "app/quizzes/[id]/attempt/page.js",
-  "/quizzes/[id]/page": "app/quizzes/[id]/page.js"
-}
+{}

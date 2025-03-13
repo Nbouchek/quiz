@@ -1,0 +1,226 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: quizapp
+spec:
+  containers:
+    - name: postgres
+      image: postgres:15-alpine
+      env:
+        - name: POSTGRES_USER
+          value: postgres
+        - name: POSTGRES_PASSWORD
+          value: postgres
+        - name: POSTGRES_DB
+          value: quizapp
+        - name: POSTGRES_MULTIPLE_DATABASES
+          value: quizapp_users,quizapp_ai,quizapp_study,quizapp_content
+        - name: LANG
+          value: en_US.utf8
+        - name: LC_ALL
+          value: en_US.utf8
+      ports:
+        - containerPort: 5432
+          hostPort: 5432
+      volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: postgres-data
+        - mountPath: /docker-entrypoint-initdb.d/10-create-multiple-databases.sh
+          name: create-multiple-databases
+        - mountPath: /docker-entrypoint-initdb.d/20-study-init.sql
+          name: study-init
+      readinessProbe:
+        exec:
+          command: ["pg_isready", "-U", "postgres"]
+        initialDelaySeconds: 5
+        periodSeconds: 5
+        timeoutSeconds: 5
+        failureThreshold: 5
+
+    - name: redis
+      image: redis:latest
+      ports:
+        - containerPort: 6379
+          hostPort: 6379
+      readinessProbe:
+        exec:
+          command: ["redis-cli", "ping"]
+        initialDelaySeconds: 5
+        periodSeconds: 5
+        timeoutSeconds: 5
+        failureThreshold: 5
+
+    - name: user-service
+      image: localhost/quizapp_user-service:latest
+      env:
+        - name: DB_HOST
+          value: localhost
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_USER
+          value: postgres
+        - name: DB_PASSWORD
+          value: postgres
+        - name: DB_NAME
+          value: quizapp_users
+        - name: REDIS_URL
+          value: redis://localhost:6379
+        - name: GIN_MODE
+          value: release
+      ports:
+        - containerPort: 8080
+          hostPort: 8080
+      readinessProbe:
+        exec:
+          command: ["wget", "--spider", "-q", "http://localhost:8080/health"]
+        initialDelaySeconds: 10
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+
+    - name: content-service
+      image: localhost/quizapp_content-service:latest
+      env:
+        - name: DB_HOST
+          value: localhost
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_USER
+          value: postgres
+        - name: DB_PASSWORD
+          value: postgres
+        - name: DB_NAME
+          value: quizapp_content
+        - name: DB_SSL_MODE
+          value: disable
+        - name: PORT
+          value: "8081"
+        - name: GIN_MODE
+          value: release
+        - name: JWT_SECRET
+          value: your-jwt-secret-key
+        - name: JWT_EXPIRATION
+          value: 24h
+      ports:
+        - containerPort: 8081
+          hostPort: 8081
+      volumeMounts:
+        - mountPath: /app/migrations
+          name: content-migrations
+      readinessProbe:
+        exec:
+          command: ["wget", "--spider", "-q", "http://localhost:8081/health"]
+        initialDelaySeconds: 10
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+
+    - name: ai-service
+      image: localhost/quizapp_ai-service:latest
+      env:
+        - name: DB_HOST
+          value: localhost
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_USER
+          value: postgres
+        - name: DB_PASSWORD
+          value: postgres
+        - name: DB_NAME
+          value: quizapp_ai
+        - name: REDIS_URL
+          value: redis://localhost:6379
+        - name: GIN_MODE
+          value: release
+      ports:
+        - containerPort: 8083
+          hostPort: 8083
+      readinessProbe:
+        exec:
+          command: ["wget", "--spider", "-q", "http://localhost:8083/health"]
+        initialDelaySeconds: 10
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+
+    - name: study-service
+      image: localhost/quizapp_study-service:latest
+      env:
+        - name: DB_HOST
+          value: localhost
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_USER
+          value: postgres
+        - name: DB_PASSWORD
+          value: postgres
+        - name: DB_NAME
+          value: quizapp_study
+        - name: REDIS_URL
+          value: redis://localhost:6379
+        - name: GIN_MODE
+          value: release
+      ports:
+        - containerPort: 8084
+          hostPort: 8084
+      volumeMounts:
+        - mountPath: /app/migrations
+          name: study-migrations
+      readinessProbe:
+        exec:
+          command: ["wget", "--spider", "-q", "http://localhost:8084/health"]
+        initialDelaySeconds: 10
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+
+    - name: api-gateway
+      image: localhost/quizapp_api-gateway:latest
+      ports:
+        - containerPort: 8082
+          hostPort: 8082
+      readinessProbe:
+        exec:
+          command: ["wget", "--spider", "-q", "http://localhost:8082/health"]
+        initialDelaySeconds: 10
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+
+    - name: frontend
+      image: localhost/quizapp_frontend:latest
+      env:
+        - name: NEXT_PUBLIC_API_URL
+          value: http://localhost:8082
+      ports:
+        - containerPort: 3000
+          hostPort: 3000
+
+volumes:
+  - name: postgres-data
+    persistentVolumeClaim:
+      claimName: postgres-data-claim
+  - name: create-multiple-databases
+    hostPath:
+      path: /Users/nacer/dev/QuizApp/QuizApp/services/study-service/create-multiple-databases.sh
+  - name: study-init
+    hostPath:
+      path: /Users/nacer/dev/QuizApp/QuizApp/services/study-service/init.sql
+  - name: content-migrations
+    hostPath:
+      path: /Users/nacer/dev/QuizApp/QuizApp/services/content-service/migrations
+  - name: study-migrations
+    hostPath:
+      path: /Users/nacer/dev/QuizApp/QuizApp/services/study-service/migrations
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data-claim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

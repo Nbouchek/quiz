@@ -67,6 +67,7 @@ type QuizAttemptRepository interface {
 	AddAnswer(ctx context.Context, answer *Answer) error
 	GetAttemptAnswers(ctx context.Context, attemptID uuid.UUID) ([]Answer, error)
 	GetQuestions(ctx context.Context, quizID uuid.UUID) ([]*Question, error)
+	GetQuestion(ctx context.Context, questionID uuid.UUID) (*Question, error)
 }
 
 // PostgresQuizAttemptRepository implements QuizAttemptRepository for PostgreSQL
@@ -289,7 +290,114 @@ func (r *PostgresQuizAttemptRepository) GetQuestions(ctx context.Context, quizID
 		return nil, fmt.Errorf("failed to decode response: %v", err)
 	}
 
-	log.Printf("DEBUG: Returning %d questions for quiz %s", len(response.Data), quizID.String())
-	
 	return response.Data, nil
+}
+
+// GetQuestion retrieves a single question from the content service
+func (r *PostgresQuizAttemptRepository) GetQuestion(ctx context.Context, questionID uuid.UUID) (*Question, error) {
+	// Get content service URL from environment variable or use default
+	contentServiceURL := os.Getenv("CONTENT_SERVICE_URL")
+	if contentServiceURL == "" {
+		contentServiceURL = "http://content-service:8081"
+	}
+	
+	// In development, allow using localhost
+	if os.Getenv("ENVIRONMENT") == "development" {
+		contentServiceURL = "http://localhost:8081"
+	}
+
+	// Adding detailed logging for debugging
+	log.Printf("DEBUG: Fetching single question from content service: %s using URL: %s", questionID.String(), contentServiceURL)
+	
+	// For now, we need to fetch all questions from the quiz and find the one we want
+	// This is because the content service doesn't expose a direct endpoint to get a question by ID
+	
+	// First, we need to find which quiz this question belongs to
+	query := `SELECT quiz_id FROM answers WHERE question_id = $1 LIMIT 1`
+	var quizID uuid.UUID
+	err := r.db.QueryRowContext(ctx, query, questionID).Scan(&quizID)
+	
+	if err == sql.ErrNoRows {
+		// If we can't find it in our answers table, try an alternative approach
+		// Make direct call to content service endpoint
+		requestURL := fmt.Sprintf("%s/questions/%s", contentServiceURL, questionID)
+		log.Printf("DEBUG: Making direct request to content service for question: %s", requestURL)
+		
+		resp, err := http.Get(requestURL)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch question from content service: %v", err)
+		}
+		defer resp.Body.Close()
+		
+		if resp.StatusCode == http.StatusOK {
+			var response struct {
+				Success bool      `json:"success"`
+				Data    *Question `json:"data"`
+			}
+			if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+				return nil, fmt.Errorf("failed to decode response: %v", err)
+			}
+			return response.Data, nil
+		}
+		
+		// If direct query doesn't work, try plan C - get all questions for each quiz
+		log.Printf("DEBUG: Could not find question directly, trying to search across all quizzes...")
+		
+		// Get list of quizzes
+		quizzesURL := fmt.Sprintf("%s/quizzes", contentServiceURL)
+		quizzesResp, err := http.Get(quizzesURL)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch quizzes: %v", err)
+		}
+		defer quizzesResp.Body.Close()
+		
+		var quizzesResponse struct {
+			Success bool `json:"success"`
+			Data    []struct {
+				ID string `json:"id"`
+			} `json:"data"`
+		}
+		
+		if err := json.NewDecoder(quizzesResp.Body).Decode(&quizzesResponse); err != nil {
+			return nil, fmt.Errorf("failed to decode quizzes response: %v", err)
+		}
+		
+		// For each quiz, try to get questions and find our target
+		for _, quiz := range quizzesResponse.Data {
+			quizUUID, err := uuid.Parse(quiz.ID)
+			if err != nil {
+				continue
+			}
+			
+			questions, err := r.GetQuestions(ctx, quizUUID)
+			if err != nil {
+				continue
+			}
+			
+			for _, q := range questions {
+				if q.ID == questionID {
+					return q, nil
+				}
+			}
+		}
+		
+		return nil, fmt.Errorf("question not found in any quiz")
+	} else if err != nil {
+		return nil, fmt.Errorf("error querying for quiz ID: %v", err)
+	}
+	
+	// Get all questions for this quiz
+	questions, err := r.GetQuestions(ctx, quizID)
+	if err != nil {
+		return nil, err
+	}
+	
+	// Find the specific question we're looking for
+	for _, q := range questions {
+		if q.ID == questionID {
+			return q, nil
+		}
+	}
+	
+	return nil, fmt.Errorf("question not found in quiz %s", quizID)
 } 

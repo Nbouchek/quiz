@@ -1,0 +1,1 @@
+(session.user as any).id = token.id as string

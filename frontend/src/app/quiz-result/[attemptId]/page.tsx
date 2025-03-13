@@ -101,99 +101,36 @@ export default function QuizResultPage() {
           typeof attemptData.score
         )
 
-        // Manual parsing approach for the score calculation
-        let correctCount = 0
-        let totalCount = 0
-
-        // Check if correctAnswers is missing (this appears to be the case from the debug output)
-        if (
-          attemptData.correctAnswers === undefined ||
-          attemptData.correctAnswers === null
-        ) {
-          debugLog(
-            'correctAnswers is missing, will use score from API directly'
-          )
-          // If API provides a score, use that directly
-          if (
-            typeof attemptData.score === 'number' &&
-            !isNaN(attemptData.score)
-          ) {
-            setScore(attemptData.score)
-            debugLog('Using score directly from API:', attemptData.score)
-
-            // Since we don't have correctAnswers but we need to display it, calculate it from score
-            if (
-              typeof attemptData.totalQuestions === 'number' &&
-              attemptData.totalQuestions > 0
-            ) {
-              // If we have a percentage score, convert it back to number of correct answers
-              const calculatedCorrectAnswers = Math.round(
-                (attemptData.score / 100) * attemptData.totalQuestions
-              )
-              // Update the attempt object with the calculated correctAnswers
-              attemptData.correctAnswers = calculatedCorrectAnswers
-              debugLog(
-                'Calculated correctAnswers from score:',
-                calculatedCorrectAnswers
-              )
-            }
-
-            // Store the updated attempt data
-            setAttempt(attemptData)
-            return
-          }
-        }
-
-        // Try to parse the values safely (this is the original logic for when correctAnswers exists)
-        try {
-          correctCount = parseInt(attemptData.correctAnswers, 10)
-          totalCount = parseInt(attemptData.totalQuestions, 10)
-
-          // If parsing resulted in NaN, use the original values
-          if (isNaN(correctCount)) {
-            debugLog(
-              'Failed to parse correctAnswers as int, using original:',
-              attemptData.correctAnswers
-            )
-            correctCount = attemptData.correctAnswers
-          }
-
-          if (isNaN(totalCount)) {
-            debugLog(
-              'Failed to parse totalQuestions as int, using original:',
-              attemptData.totalQuestions
-            )
-            totalCount = attemptData.totalQuestions
-          }
-        } catch (parseError) {
-          debugLog('Error parsing score values:', parseError)
-          // Fall back to original values if parsing fails
-          correctCount = attemptData.correctAnswers
-          totalCount = attemptData.totalQuestions
-        }
-
-        // Very explicit score calculation with checks
+        // Simplified score calculation logic
         let calculatedScore = 0
 
+        // First, directly use score from API if it's available and valid
         if (
-          typeof correctCount === 'number' &&
-          typeof totalCount === 'number' &&
-          !isNaN(correctCount) &&
-          !isNaN(totalCount) &&
-          totalCount > 0
+          typeof attemptData.score === 'number' &&
+          !isNaN(attemptData.score)
         ) {
-          calculatedScore = Math.round((correctCount / totalCount) * 100)
+          calculatedScore = Math.round(attemptData.score)
+          debugLog('Using rounded score from API:', calculatedScore)
+        }
+        // If score is not available, calculate it from correctAnswers and totalQuestions
+        else if (
+          typeof attemptData.correctAnswers === 'number' &&
+          typeof attemptData.totalQuestions === 'number' &&
+          attemptData.totalQuestions > 0
+        ) {
+          calculatedScore = Math.round(
+            (attemptData.correctAnswers / attemptData.totalQuestions) * 100
+          )
           debugLog(
-            `Score calculation: (${correctCount} / ${totalCount}) * 100 = ${calculatedScore}%`
+            `Calculated score: (${attemptData.correctAnswers} / ${attemptData.totalQuestions}) * 100 = ${calculatedScore}%`
           )
         } else {
-          debugLog('Invalid values for score calculation:', {
-            correctCount,
-            totalCount,
-          })
+          debugLog(
+            'Could not determine score from attempt data, defaulting to 0'
+          )
         }
 
-        // Force a valid score (0-100 range)
+        // Ensure score is in valid range
         calculatedScore = Math.max(0, Math.min(100, calculatedScore))
         setScore(calculatedScore)
         debugLog('Final score set to:', calculatedScore)
@@ -207,7 +144,27 @@ export default function QuizResultPage() {
         }
         const answersData = await answersResponse.json()
         debugLog('Answers data:', answersData.data)
-        setAnswers(answersData.data || [])
+
+        // Set answers state
+        const answersArray = answersData.data || []
+        setAnswers(answersArray)
+
+        // If the API returns a score of 0 but there are correct answers in the array,
+        // recalculate the score from the answers data
+        if (calculatedScore === 0 && answersArray.length > 0) {
+          const correctCount = answersArray.filter(
+            (a: Answer) => a.isCorrect
+          ).length
+          if (correctCount > 0 && attemptData.totalQuestions > 0) {
+            const recalculatedScore = Math.round(
+              (correctCount / attemptData.totalQuestions) * 100
+            )
+            debugLog(
+              `API returned score of 0 but found ${correctCount} correct answers. Recalculating score: ${recalculatedScore}%`
+            )
+            setScore(recalculatedScore)
+          }
+        }
       } catch (err) {
         console.error('Error loading quiz result:', err)
         setError(
@@ -294,6 +251,24 @@ export default function QuizResultPage() {
             <strong>Calculated Score:</strong> {score}%
           </div>
           <div>
+            <strong>API Score:</strong>{' '}
+            {attempt.score !== undefined ? `${attempt.score}` : 'undefined'}
+          </div>
+          <div>
+            <strong>Correct Answers:</strong>{' '}
+            {attempt.correctAnswers !== undefined
+              ? `${attempt.correctAnswers}`
+              : 'undefined'}{' '}
+            / {attempt.totalQuestions}
+          </div>
+          <div>
+            <strong>Answer Count:</strong> {answers.length}
+          </div>
+          <div>
+            <strong>Correct Answer Count from Answers Array:</strong>{' '}
+            {answers.filter((a) => a.isCorrect).length}
+          </div>
+          <div>
             <strong>Raw Data:</strong>
             <pre className="mt-1 max-h-40 overflow-auto rounded bg-gray-100 p-2">
               {JSON.stringify(
@@ -301,6 +276,11 @@ export default function QuizResultPage() {
                   correctAnswers: attempt.correctAnswers,
                   totalQuestions: attempt.totalQuestions,
                   score: attempt.score,
+                  answers: answers.map((a) => ({
+                    id: a.id,
+                    isCorrect: a.isCorrect,
+                    answer: a.answer,
+                  })),
                 },
                 null,
                 2
@@ -319,17 +299,42 @@ export default function QuizResultPage() {
       <div className="mb-8 overflow-hidden rounded-lg bg-white shadow">
         <div className="p-6">
           <h1 className="mb-4 text-3xl font-bold">Quiz Results</h1>
+
+          {/* Show a message for quizzes with no submitted answers */}
+          {answers.length === 0 && (
+            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-800">
+              <h3 className="font-medium">No answers submitted</h3>
+              <p className="mt-1 text-sm">
+                This quiz was completed without submitting any answers. The
+                score is 0%.
+              </p>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="rounded-lg bg-gray-50 p-4">
               <div className="text-sm text-gray-500">Score</div>
-              <div className="mt-1 text-2xl font-semibold">{score}%</div>
+              <div className="mt-1 text-2xl font-semibold">
+                {score === 0 &&
+                answers.filter((a: Answer) => a.isCorrect).length > 0
+                  ? Math.round(
+                      (answers.filter((a: Answer) => a.isCorrect).length /
+                        attempt.totalQuestions) *
+                        100
+                    )
+                  : score}
+                %
+              </div>
             </div>
             <div className="rounded-lg bg-gray-50 p-4">
               <div className="text-sm text-gray-500">Correct Answers</div>
               <div className="mt-1 text-2xl font-semibold">
-                {attempt.correctAnswers !== undefined
-                  ? attempt.correctAnswers
-                  : '0'}{' '}
+                {answers.length === 0
+                  ? '0'
+                  : typeof attempt.correctAnswers === 'number' &&
+                      attempt.correctAnswers > 0
+                    ? attempt.correctAnswers
+                    : answers.filter((a: Answer) => a.isCorrect).length}{' '}
                 / {attempt.totalQuestions || 0}
               </div>
             </div>
@@ -349,53 +354,65 @@ export default function QuizResultPage() {
         </div>
       </div>
 
-      <div className="space-y-4">
-        {answers.map((answer, index) => (
-          <div
-            key={answer.id}
-            className="overflow-hidden rounded-lg bg-white shadow"
-          >
-            <div className="border-b bg-gray-50 px-6 py-4">
-              <h3 className="text-xl font-semibold text-gray-900">
-                Question {index + 1}
-              </h3>
-            </div>
-            <div className="px-6 py-4">
-              <p className="mb-4 text-lg text-gray-900">
-                {answer.question.text}
-              </p>
-              <div className="space-y-3">
-                {answer.question.options.map((option) => (
-                  <div
-                    key={option}
-                    className={clsx(
-                      'flex items-center justify-between rounded-lg border p-4',
-                      option === answer.question.correctAnswer
-                        ? 'border-green-500 bg-green-50'
-                        : option === answer.answer && !answer.isCorrect
-                          ? 'border-red-500 bg-red-50'
-                          : 'border-gray-200'
-                    )}
-                  >
-                    <span className="text-gray-900">{option}</span>
-                    {option === answer.question.correctAnswer && (
-                      <CheckIcon className="h-5 w-5 text-green-500" />
-                    )}
-                    {option === answer.answer && !answer.isCorrect && (
-                      <XMarkIcon className="h-5 w-5 text-red-500" />
-                    )}
-                  </div>
-                ))}
+      {/* Only show questions if there are answers */}
+      {answers.length > 0 ? (
+        <div className="space-y-4">
+          {answers.map((answer, index) => (
+            <div
+              key={answer.id}
+              className="overflow-hidden rounded-lg bg-white shadow"
+            >
+              <div className="border-b bg-gray-50 px-6 py-4">
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Question {index + 1}
+                </h3>
               </div>
-              {answer.question.explanation && (
-                <div className="mt-4 rounded-lg bg-primary-50 p-4 text-sm text-primary-700">
-                  <strong>Explanation:</strong> {answer.question.explanation}
+              <div className="px-6 py-4">
+                <p className="mb-4 text-lg text-gray-900">
+                  {answer.question.text}
+                </p>
+                <div className="space-y-3">
+                  {answer.question.options.map((option) => (
+                    <div
+                      key={option}
+                      className={clsx(
+                        'flex items-center justify-between rounded-lg border p-4',
+                        option === answer.question.correctAnswer
+                          ? 'border-green-500 bg-green-50'
+                          : option === answer.answer && !answer.isCorrect
+                            ? 'border-red-500 bg-red-50'
+                            : 'border-gray-200'
+                      )}
+                    >
+                      <span className="text-gray-900">{option}</span>
+                      {option === answer.question.correctAnswer && (
+                        <CheckIcon className="h-5 w-5 text-green-500" />
+                      )}
+                      {option === answer.answer && !answer.isCorrect && (
+                        <XMarkIcon className="h-5 w-5 text-red-500" />
+                      )}
+                    </div>
+                  ))}
                 </div>
-              )}
+                {answer.question.explanation && (
+                  <div className="mt-4 rounded-lg bg-primary-50 p-4 text-sm text-primary-700">
+                    <strong>Explanation:</strong> {answer.question.explanation}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-lg bg-white p-8 text-center shadow">
+          <h3 className="text-xl font-medium text-gray-900">
+            No answers to display
+          </h3>
+          <p className="mt-2 text-gray-600">
+            This quiz was completed without submitting any answers.
+          </p>
+        </div>
+      )}
 
       <div className="mt-8 flex justify-between">
         <button
